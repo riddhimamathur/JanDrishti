@@ -1,4 +1,6 @@
 import { projects, states, districtsByState, translations, notifications } from "./data.js";
+import { initializeAssistant } from "./assistant.js";
+import { localizeDOM, localizedProjectContent } from "./i18n.js";
 
 const STORAGE = {
   bookmarks: "jandrishti.bookmarks",
@@ -8,7 +10,7 @@ const STORAGE = {
   user: "jandrishti.mockUser",
   readNotifications: "jandrishti.readNotifications"
 };
-const localeByLanguage = { en: "en-IN", hi: "hi-IN", gu: "gu-IN", mr: "mr-IN", bn: "bn-IN", te: "te-IN", kn: "kn-IN" };
+const localeByLanguage = { en: "en-IN", hi: "hi-IN", gu: "gu-IN", mr: "mr-IN", or: "or-IN", bn: "bn-IN", te: "te-IN", kn: "kn-IN" };
 const markerPositions = [
   { name: "Rajasthan", x: 202, y: 187 }, { name: "Gujarat", x: 156, y: 255 },
   { name: "Maharashtra", x: 227, y: 297 }, { name: "Karnataka", x: 246, y: 374 },
@@ -31,7 +33,8 @@ const state = {
   user: safeRead(STORAGE.user, null),
   readNotifications: new Set(safeRead(STORAGE.readNotifications, [])),
   locationEnabled: false,
-  locationCoords: null
+  locationCoords: null,
+  fallbackOrder: loadFallbackOrder()
 };
 
 const elements = {
@@ -56,6 +59,7 @@ const elements = {
   modalRoot: document.querySelector("#modal-root"),
   toastRegion: document.querySelector("#toast-region")
 };
+let modalReturnFocus = null;
 
 function safeRead(key, fallback) {
   try {
@@ -67,6 +71,19 @@ function safeRead(key, fallback) {
 }
 function safeWrite(key, value) {
   try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* Private browsing may disable storage. */ }
+}
+function loadFallbackOrder() {
+  const ids = projects.filter(project => project.status === "ongoing").map(project => project.id);
+  try {
+    const stored = JSON.parse(sessionStorage.getItem("jandrishti.fallbackOrder") || "null");
+    if (Array.isArray(stored) && stored.length === ids.length && new Set(stored).size === ids.length && ids.every(id => stored.includes(id))) return stored;
+  } catch { /* Storage can be unavailable in private browsing. */ }
+  for (let index = ids.length - 1; index > 0; index--) {
+    const swap = Math.floor(Math.random() * (index + 1));
+    [ids[index], ids[swap]] = [ids[swap], ids[index]];
+  }
+  try { sessionStorage.setItem("jandrishti.fallbackOrder", JSON.stringify(ids)); } catch { /* Keep the randomized in-memory order. */ }
+  return ids;
 }
 function escapeHtml(value = "") {
   return String(value).replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
@@ -102,6 +119,7 @@ function updateFilterOptions() {
   const districts = state.filters.state ? (districtsByState[state.filters.state] || projects.filter(project => project.state === state.filters.state).map(project => project.district)) : allDistricts();
   fillSelect(elements.district, [...new Set(districts)].sort((a, b) => a.localeCompare(b)), "All districts", state.filters.district);
   elements.startDate.value = state.filters.startDate;
+  localizeDOM(elements.filterPanel, state.language);
 }
 function setProfile() {
   const name = state.user?.name || "Sign in";
@@ -132,6 +150,8 @@ function applyLanguage() {
   setProfile();
   renderNotifications();
   renderApp();
+  localizeDOM(document.body, state.language);
+  document.dispatchEvent(new CustomEvent("jandrishti:language-change", { detail: { language: state.language } }));
 }
 function updateActiveNav() {
   document.querySelectorAll("[data-view]").forEach(button => {
@@ -153,7 +173,10 @@ function currentProjects() {
   if (state.view === "updates") list = list.sort(sortNewest);
   else if (state.view === "feed") {
     if (state.locationCoords && state.locationEnabled) list = list.sort((a, b) => distanceFromLocation(a) - distanceFromLocation(b));
-    else list = list.filter(project => project.status === "ongoing").sort(sortNewest);
+    else {
+      const positions = new Map(state.fallbackOrder.map((id, index) => [id, index]));
+      list = list.filter(project => project.status === "ongoing").sort((a, b) => (positions.get(a.id) ?? Infinity) - (positions.get(b.id) ?? Infinity));
+    }
   }
   if (state.sort === "oldest") list.reverse();
   if (state.sort === "start") list.sort((a, b) => b.startDate.localeCompare(a.startDate));
@@ -182,6 +205,7 @@ function showToast(message) {
   toast.className = "toast";
   toast.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><span>${escapeHtml(message)}</span>`;
   elements.toastRegion.append(toast);
+  localizeDOM(toast, state.language);
   window.setTimeout(() => toast.remove(), 3200);
 }
 function statsFor(projectList) {
@@ -200,6 +224,7 @@ function buildingIcon() {
 function statusClass(status) { return status === "new" ? "is-new" : status === "ended" ? "is-ended" : ""; }
 function renderProjectCard(project) {
   const saved = state.bookmarks.has(project.id);
+  const projectCopy = localizedProjectContent(project, state.language);
   return `<article class="project-card" data-project-card="${escapeHtml(project.id)}">
     <button class="project-image" type="button" data-open-project="${escapeHtml(project.id)}" aria-label="View ${escapeHtml(project.title)} details">
       <img src="${escapeHtml(project.image)}" alt="${escapeHtml(project.imageAlt)}" loading="lazy" width="640" height="480" />
@@ -215,7 +240,7 @@ function renderProjectCard(project) {
       </div>
       <button class="project-title" type="button" data-open-project="${escapeHtml(project.id)}">${escapeHtml(project.title)}</button>
       <div class="project-department">${buildingIcon()}<span>${escapeHtml(project.department)}</span></div>
-      <p class="project-description">${escapeHtml(project.description)}</p>
+      <p class="project-description">${escapeHtml(projectCopy.description)}</p>
       <div class="project-meta">
         <div class="meta-item"><span>Estimated completion</span><strong>${formatShortDate(project.completion)}</strong></div>
         <div class="meta-item"><span>Project update</span><strong>${formatShortDate(project.updatedAt)}</strong></div>
@@ -236,7 +261,7 @@ function recentActivity(limit = 3) {
   return projects.flatMap(project => project.updates.slice(0, 1).map(update => ({ project, update }))).sort((a, b) => b.update.date.localeCompare(a.update.date)).slice(0, limit);
 }
 function renderTimeline() {
-  return `<div class="timeline">${recentActivity(3).map(({ project, update }) => `<div class="timeline-item"><span class="timeline-track"><i></i></span><div class="timeline-copy"><strong>${escapeHtml(project.title)}</strong><p>${escapeHtml(update.text)}</p><time>${formatShortDate(update.date)} · ${escapeHtml(project.district)}</time></div></div>`).join("")}</div>`;
+  return `<div class="timeline">${recentActivity(3).map(({ project, update }) => `<div class="timeline-item"><span class="timeline-track"><i></i></span><div class="timeline-copy"><strong>${escapeHtml(project.title)}</strong><p>${escapeHtml(localizedProjectContent(project, state.language).latestUpdate)}</p><time>${formatShortDate(update.date)} · ${escapeHtml(project.district)}</time></div></div>`).join("")}</div>`;
 }
 function renderMiniMap() {
   return `<svg viewBox="60 20 430 500" role="img" aria-label="Illustrative map of India with project locations"><path class="india-shape" d="M243 27 274 40 294 56 322 61 333 78 365 95 383 120 407 135 422 164 444 178 451 209 435 231 450 257 432 283 416 302 399 330 380 347 369 379 350 411 335 443 316 474 293 505 276 481 256 460 239 431 215 418 201 393 180 375 158 350 138 326 119 301 105 274 103 247 117 223 134 204 138 177 159 162 174 143 195 131 210 108 232 87 238 61Z"/>${markerPositions.slice(0, 7).map(point => `<circle class="map-point-hit" cx="${point.x}" cy="${point.y}" r="12" data-state="${escapeHtml(point.name)}" role="button" tabindex="0" aria-label="Show projects in ${escapeHtml(point.name)}"><title>${escapeHtml(point.name)}</title></circle><circle class="map-point ${state.mapState === point.name ? "is-selected" : ""}" cx="${point.x}" cy="${point.y}" r="5" pointer-events="none"/>`).join("")}</svg>`;
@@ -324,7 +349,7 @@ function renderStatePanel() {
   </aside>`;
 }
 function renderMap() {
-  const title = state.mapState || "All India";
+  const title = state.mapState || t("allIndia");
   const mapProjects = state.mapState ? stateProjects(state.mapState) : projects;
   return `<div class="main-content"><section class="page-heading"><div><span class="eyebrow">CITIZEN PROJECT MAP · SAMPLE VIEW</span><h1>${state.mapState ? `${escapeHtml(state.mapState)} projects` : "Explore projects across India"}</h1><p>Choose a state or district to see sample projects, activity, and status counts. Map boundaries are illustrative.</p></div><div class="page-heading-actions">${state.mapState ? `<button class="button button-secondary button-small" type="button" data-action="clear-map-state">← ${t("allIndia")}</button>` : `<button class="button button-secondary button-small" type="button" data-action="location">${locationIcon()} ${t("location")}</button>`}</div></section>
     <div class="map-page-layout"><section class="map-panel"><div class="map-panel-heading"><div><h2>${state.mapState ? `${escapeHtml(state.mapState)} · state view` : "India · project distribution"}</h2><p>${state.mapState ? "A focused, illustrative view of the selected state." : "Select a marked state to open its project overview."}</p></div><div class="map-status-legend"><span><i></i>${t("ongoing")}</span><span><i class="new"></i>${t("newProjects")}</span></div></div><div class="map-canvas">${renderMapDrawing()}<span class="map-click-hint">${locationIcon()} Select a state marker or district</span><span class="map-canvas-legend">Schematic map · not to scale</span>${state.mapState ? `<div class="state-map-popup"><strong>${escapeHtml(state.mapState)}</strong><span>${mapProjects.length} sample projects</span></div>` : ""}</div>${mapSummary(mapProjects, title)}</section>${renderStatePanel()}</div>
@@ -336,6 +361,7 @@ function renderApp() {
   updateActiveNav();
   if (state.view === "map") elements.app.innerHTML = renderMap();
   else elements.app.innerHTML = renderFeed();
+  localizeDOM(document.body, state.language);
   if (state.view === "map") {
     document.querySelectorAll("[data-map-district]").forEach(button => button.addEventListener("click", event => {
       const district = event.currentTarget.dataset.mapDistrict;
@@ -384,14 +410,36 @@ function openProject(projectId) {
   if (!project) return;
   recordHistory(project.id);
   const saved = state.bookmarks.has(project.id);
-  showModal(`<span class="modal-eyebrow">PROJECT DETAILS · ILLUSTRATIVE SAMPLE</span><h2 class="modal-title">${escapeHtml(project.title)}</h2><div class="detail-topline"><span class="status-badge ${statusClass(project.status)}">${escapeHtml(statusLabel(project.status))}</span><span class="location-pill">${locationIcon()}<span>${escapeHtml(project.location)}</span></span></div><img class="detail-image" src="${escapeHtml(project.image)}" alt="${escapeHtml(project.imageAlt)}"/><p class="detail-summary">${escapeHtml(project.description)}</p><div class="detail-facts"><div class="detail-fact"><span>Department</span><strong>${escapeHtml(project.department)}</strong></div><div class="detail-fact"><span>Project budget</span><strong>${escapeHtml(project.budget)}</strong></div><div class="detail-fact"><span>Expected completion</span><strong>${formatDate(project.completion)}</strong></div></div><div class="progress-header"><span>Reported project progress · sample</span><strong>${project.progress}%</strong></div><div class="progress-track"><div class="progress-fill" style="width:${project.progress}%"></div></div><div class="update-list"><span class="eyebrow">RECENT PROJECT UPDATES</span>${project.updates.map(update => `<div class="update-row"><time>${formatDate(update.date, { day: "numeric", month: "short", year: "numeric" })}</time><p>${escapeHtml(update.text)}</p></div>`).join("")}</div><div class="modal-action-row"><button class="button ${saved ? "button-secondary" : "button-primary"}" type="button" data-modal-bookmark="${escapeHtml(project.id)}" aria-pressed="${saved}">${saved ? "★ Starred project" : "☆ Star this project"}</button><button class="button button-secondary" type="button" data-modal-close>Done</button></div><p class="form-note">Sample content only. This page is not connected to a government project database.</p>`);
+  const projectCopy = localizedProjectContent(project, state.language);
+  const latestUpdate = project.updates.slice().sort((a, b) => b.date.localeCompare(a.date))[0];
+  showModal(`<span class="modal-eyebrow">PROJECT DETAILS · ILLUSTRATIVE SAMPLE</span><h2 class="modal-title">${escapeHtml(project.title)}</h2><div class="detail-topline"><span class="status-badge ${statusClass(project.status)}">${escapeHtml(statusLabel(project.status))}</span><span class="location-pill">${locationIcon()}<span>${escapeHtml(project.location)}</span></span></div><img class="detail-image" src="${escapeHtml(project.image)}" alt="${escapeHtml(project.imageAlt)}"/><p class="detail-summary">${escapeHtml(projectCopy.description)}</p><div class="detail-facts"><div class="detail-fact"><span>Department</span><strong>${escapeHtml(project.department)}</strong></div><div class="detail-fact"><span>Project budget</span><strong>${escapeHtml(project.budget)}</strong></div><div class="detail-fact"><span>Expected completion</span><strong>${formatDate(project.completion)}</strong></div></div><div class="progress-header"><span>Reported project progress · sample</span><strong>${project.progress}%</strong></div><div class="progress-track"><div class="progress-fill" style="width:${project.progress}%"></div></div><div class="update-list"><span class="eyebrow">RECENT PROJECT UPDATES</span>${latestUpdate ? `<div class="update-row"><time>${formatDate(latestUpdate.date, { day: "numeric", month: "short", year: "numeric" })}</time><p>${escapeHtml(projectCopy.latestUpdate)}</p></div>` : ""}</div><div class="modal-action-row"><button class="button ${saved ? "button-secondary" : "button-primary"}" type="button" data-modal-bookmark="${escapeHtml(project.id)}" aria-pressed="${saved}">${saved ? "★ Starred project" : "☆ Star this project"}</button><button class="button button-secondary" type="button" data-modal-close>Done</button></div><p class="form-note">Sample content only. This page is not connected to a government project database.</p>`);
+}
+function trapModalFocus(event, dialog) {
+  if (event.key !== "Tab") return;
+  const focusable = [...dialog.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')].filter(element => !element.hidden && element.getClientRects().length);
+  if (!focusable.length) { event.preventDefault(); dialog.focus(); return; }
+  const first = focusable[0], last = focusable.at(-1);
+  if (event.shiftKey && (document.activeElement === first || !dialog.contains(document.activeElement))) { event.preventDefault(); last.focus(); }
+  else if (!event.shiftKey && (document.activeElement === last || !dialog.contains(document.activeElement))) { event.preventDefault(); first.focus(); }
 }
 function showModal(content, wide = false) {
+  if (!elements.modalRoot.querySelector(".modal-card")) modalReturnFocus = document.activeElement;
   elements.modalRoot.innerHTML = `<div class="modal-overlay" data-modal-backdrop><section class="modal-card ${wide ? "modal-wide" : ""}" role="dialog" aria-modal="true"><button class="modal-close" type="button" data-modal-close aria-label="Close dialog">×</button>${content}</section></div>`;
+  const dialog = elements.modalRoot.querySelector(".modal-card");
+  const heading = dialog.querySelector(".modal-title");
+  if (heading) { heading.id = "modal-title"; dialog.setAttribute("aria-labelledby", "modal-title"); }
+  else dialog.setAttribute("aria-label", "JanDrishti dialog");
+  localizeDOM(elements.modalRoot, state.language);
   const firstFocusable = elements.modalRoot.querySelector("input, select, textarea, button:not(.modal-close)");
   window.setTimeout(() => firstFocusable?.focus(), 20);
 }
-function closeModal() { elements.modalRoot.innerHTML = ""; }
+function closeModal() {
+  if (!elements.modalRoot.querySelector(".modal-card")) return;
+  elements.modalRoot.innerHTML = "";
+  const returnFocus = modalReturnFocus;
+  modalReturnFocus = null;
+  if (returnFocus?.isConnected) window.requestAnimationFrame(() => returnFocus.focus());
+}
 function openAuth(mode = "signin") {
   const signUp = mode === "signup";
   const title = signUp ? "Create your JanDrishti profile" : "Sign in to JanDrishti";
@@ -407,6 +455,7 @@ function renderNotifications() {
   const unread = notifications.some(item => item.unread && !state.readNotifications.has(item.id));
   document.querySelector(".notification-dot").hidden = !unread;
   elements.notificationPanel.innerHTML = `<div class="notification-head"><h3>${t("notifications")}</h3><button class="text-button" type="button" data-action="mark-notifications-read">Mark read</button></div>${notifications.map(item => `<button class="notification-item" type="button" data-open-project="${escapeHtml(item.projectId)}" data-notification="${escapeHtml(item.id)}"><span class="notification-mark"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5m0 14h17M8 15l4-4 3 2 5-6"/></svg></span><span class="notification-copy"><strong>${escapeHtml(item.label)}${item.unread && !state.readNotifications.has(item.id) ? `<i class="unread-dot"></i>` : ""}</strong><p>${escapeHtml(item.text)}</p><small>${escapeHtml(item.when)}</small></span></button>`).join("")}`;
+  localizeDOM(elements.notificationPanel, state.language);
 }
 function openSettings() {
   showModal(`<span class="modal-eyebrow">PREFERENCES · THIS DEVICE</span><h2 class="modal-title">Settings</h2><p class="modal-intro">A few controls to make this civic dashboard more comfortable to use.</p><div class="settings-choice"><span><strong>Dark theme</strong><small>Switch between the light civic theme and a low-light palette.</small></span><button class="theme-toggle" type="button" role="switch" aria-label="Dark theme" aria-checked="${state.theme === "dark"}" data-action="toggle-theme"></button></div><div class="settings-choice"><span><strong>Nearby project feed</strong><small>Use your device location only when you choose. Coordinates stay in this tab.</small></span><button class="button button-secondary button-small" type="button" data-action="location">${state.locationEnabled ? "Turn off" : "Use location"}</button></div><div class="settings-choice"><span><strong>Feedback</strong><small>Share a suggestion about making public projects easier to understand.</small></span><button class="button button-secondary button-small" type="button" data-action="feedback">Send feedback</button></div><div class="settings-choice"><span><strong>Report a bug</strong><small>Describe a display issue or something that is not working in this demo.</small></span><button class="button button-secondary button-small" type="button" data-action="bug-report">Report issue</button></div><div class="modal-action-row"><span class="theme-preview"><i></i> Civic trust theme</span><button class="button button-primary button-small" type="button" data-modal-close>Done</button></div>`);
@@ -517,7 +566,7 @@ document.addEventListener("click", event => {
 
   if (filterTrigger) { togglePopover(elements.filterPanel, elements.filterTrigger); return; }
   if (notificationTrigger) { renderNotifications(); togglePopover(elements.notificationPanel, elements.notificationTrigger); return; }
-  if (profileTrigger) { elements.profilePanel.innerHTML = renderProfilePanel(); togglePopover(elements.profilePanel, elements.profileTrigger); return; }
+  if (profileTrigger) { elements.profilePanel.innerHTML = renderProfilePanel(); localizeDOM(elements.profilePanel, state.language); togglePopover(elements.profilePanel, elements.profileTrigger); return; }
   if (dataView) { setView(dataView.dataset.view); return; }
   if (openProjectButton) {
     const notificationId = openProjectButton.dataset.notification;
@@ -555,6 +604,8 @@ document.addEventListener("keydown", event => {
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
     event.preventDefault(); elements.search.focus();
   }
+  const dialog = elements.modalRoot.querySelector(".modal-card");
+  if (dialog && event.key === "Tab") trapModalFocus(event, dialog);
   if (event.key === "Escape") { closeModal(); closePopovers(); }
   if ((event.key === "Enter" || event.key === " ") && event.target.matches(".state-marker")) {
     event.preventDefault(); mapToState(event.target.dataset.state);
@@ -617,4 +668,5 @@ document.addEventListener("click", event => {
 });
 
 if (!state.language || !translations[state.language]) state.language = "en";
+initializeAssistant({ root: document.querySelector("#assistant-root"), getLanguage: () => state.language, onProjectOpen: openProject, sourceProjects: projects });
 applyLanguage();
