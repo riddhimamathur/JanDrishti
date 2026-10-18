@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#F8FAFC" />
+    <meta name="description" content="JanDrishti makes public projects easier to find, follow, and understand." />
+    <title>JanDrishti — Public work, made visible</title>
+    <link rel="icon" href="./assets/jd-mark.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./styles.css" />
+    <script type="module" src="./script.js"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
+
+    <header class="topbar" aria-label="Main navigation">
+      <a class="brand" href="#home" aria-label="JanDrishti home" data-action="home">
+        <span class="brand-mark"><img src="./assets/jd-mark.svg" alt="" width="40" height="40" /></span>
+        <span class="brand-copy"><strong>JanDrishti</strong><small>PUBLIC WORK, MADE VISIBLE</small></span>
+      </a>
+
+      <div class="search-cluster">
+        <label class="search-box" for="global-search">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.5 4.5"/></svg>
+          <input id="global-search" type="search" autocomplete="off" placeholder="Search projects, places, departments" aria-label="Search projects, places, and departments" />
+          <kbd>⌘ K</kbd>
+        </label>
+        <button class="filter-trigger" id="filter-trigger" type="button" aria-expanded="false" aria-controls="filter-panel">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M7 12h10m-7 6h4"/><circle cx="8" cy="6" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="12" cy="18" r="1.5"/></svg>
+          <span data-i18n="filter">Filters</span><span class="filter-count" id="filter-count" hidden>0</span>
+        </button>
+        <div class="filter-panel popover" id="filter-panel" hidden>
+          <div class="popover-heading"><div><span class="eyebrow">REFINE YOUR VIEW</span><h3>Project filters</h3></div><button class="icon-button quiet" type="button" data-action="close-filters" aria-label="Close filters">×</button></div>
+          <label class="field-label" for="department-filter">Department</label>
+          <select class="field-control" id="department-filter"><option value="">All departments</option></select>
+          <label class="field-label" for="state-filter">State</label>
+          <select class="field-control" id="state-filter"><option value="">All states</option></select>
+          <label class="field-label" for="district-filter">District</label>
+          <select class="field-control" id="district-filter"><option value="">All districts</option></select>
+          <label class="field-label" for="start-date-filter">Project Start Date · from</label>
+          <input class="field-control" id="start-date-filter" type="date" />
+          <div class="popover-actions"><button class="text-button" type="button" data-action="reset-filters">Reset</button><button class="button button-primary button-small" type="button" data-action="apply-filters">Show projects <span id="filter-result-count">8</span></button></div>
+        </div>
+      </div>
+
+      <div class="top-actions">
+        <label class="language-control" aria-label="Select language">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18m0-18a14 14 0 0 0 0 18"/></svg>
+          <select id="language-select" aria-label="Language"><option value="en">EN</option><option value="hi">हिंदी</option><option value="gu">ગુજરાતી</option><option value="mr">मराठी</option><option value="bn">বাংলা</option><option value="te">తెలుగు</option><option value="kn">ಕನ್ನಡ</option></select>
+          <svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg>
+        </label>
+        <span class="top-divider" aria-hidden="true"></span>
+        <button class="icon-button top-icon" type="button" data-view="history" aria-label="Recently viewed projects" title="Recently viewed"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 12a8.5 8.5 0 1 0 2.4-5.9L3.5 8.5"/><path d="M3.5 4.5v4h4M12 7v5l3.3 2"/></svg><span class="sr-only">History</span></button>
+        <button class="icon-button top-icon" type="button" data-view="saved" aria-label="Starred projects" title="Starred projects"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.8 5.8 6.4.9-4.6 4.5 1.1 6.4-5.7-3-5.7 3 1.1-6.4-4.6-4.5 6.4-.9L12 3Z"/></svg><span class="sr-only">Bookmarks</span><span class="mini-count" id="saved-count" hidden>0</span></button>
+        <div class="relative-anchor">
+          <button class="icon-button top-icon" id="notification-trigger" type="button" aria-expanded="false" aria-controls="notification-panel" aria-label="Notifications" title="Notifications"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg><span class="notification-dot" aria-hidden="true"></span></button>
+          <div class="notification-panel popover" id="notification-panel" hidden></div>
+        </div>
+        <button class="profile-button" id="profile-trigger" type="button" aria-expanded="false" aria-controls="profile-panel"><span class="avatar" id="profile-avatar">G</span><span class="profile-label" id="profile-label">Guest</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></button>
+        <div class="profile-panel popover" id="profile-panel" hidden></div>
+      </div>
+    </header>
+
+    <aside class="sidebar" aria-label="Workspace navigation">
+      <div class="sidebar-group">
+        <button class="side-link is-active" type="button" data-view="feed" aria-label="Home"><span class="side-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v9a2 2 0 0 1-2 2h-4v-7H9v7H5a2 2 0 0 1-2-2v-9Z"/></svg></span><span class="side-tooltip">Home</span></button>
+        <button class="side-link" type="button" data-view="map" aria-label="Explore map"><span class="side-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3V6Z"/><path d="M9 3v15m6-12v15"/></svg></span><span class="side-tooltip">Explore map</span></button>
+        <button class="side-link" type="button" data-view="updates" aria-label="Project updates"><span class="side-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5m0 14h17M8 15l4-4 3 2 5-6"/><circle cx="8" cy="15" r="1"/><circle cx="12" cy="11" r="1"/><circle cx="15" cy="13" r="1"/><circle cx="20" cy="7" r="1"/></svg></span><span class="side-tooltip">Updates</span></button>
+      </div>
+      <div class="sidebar-bottom">
+        <button class="side-link" type="button" data-action="location" aria-label="Use my location"><span class="side-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg></span><span class="side-tooltip">Location</span></button>
+        <button class="side-link" type="button" data-action="settings" aria-label="Settings"><span class="side-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z"/><path d="m19.4 15 .1.1 1.4 1.1-1.4 2.4-1.7-.6a8.2 8.2 0 0 1-1.5.9l-.3 1.8h-2.8l-.4-1.8a8.2 8.2 0 0 1-1.5-.9l-1.7.6-1.4-2.4 1.4-1.1a7 7 0 0 1 0-1.8l-1.4-1.1 1.4-2.4 1.7.6a8.2 8.2 0 0 1 1.5-.9l.4-1.8h2.8l.3 1.8a8.2 8.2 0 0 1 1.5.9l1.7-.6 1.4 2.4-1.4 1.1a7 7 0 0 1 0 1.7Z" transform="translate(-1 -2)"/></svg></span><span class="side-tooltip">Settings</span></button>
+      </div>
+      <div class="sidebar-brand-note" aria-hidden="true"><span class="status-pulse"></span><span>Public beta</span></div>
+    </aside>
+
+    <main class="main-shell" id="main-content" tabindex="-1">
+      <div id="app-view" aria-live="polite"></div>
+    </main>
+
+    <nav class="mobile-nav" aria-label="Mobile navigation">
+      <button type="button" data-view="feed" class="is-active"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v9a2 2 0 0 1-2 2h-4v-7H9v7H5a2 2 0 0 1-2-2v-9Z"/></svg><span>Home</span></button>
+      <button type="button" data-view="map"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3V6Z"/><path d="M9 3v15m6-12v15"/></svg><span>Map</span></button>
+      <button type="button" data-view="saved"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.8 5.8 6.4.9-4.6 4.5 1.1 6.4-5.7-3-5.7 3 1.1-6.4-4.6-4.5 6.4-.9L12 3Z"/></svg><span>Saved</span></button>
+      <button type="button" data-view="history"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 12a8.5 8.5 0 1 0 2.4-5.9L3.5 8.5"/><path d="M3.5 4.5v4h4M12 7v5l3.3 2"/></svg><span>History</span></button>
+      <button type="button" data-action="settings"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.5"/><path d="M19.4 15.2 21 16.4l-1.5 2.5-1.8-.6a8 8 0 0 1-1.5.8l-.4 1.9h-2.9l-.4-1.9a8 8 0 0 1-1.5-.8l-1.8.6-1.5-2.5 1.5-1.2a7 7 0 0 1 0-2.3L5.7 11.7l1.5-2.5 1.8.6a8 8 0 0 1 1.5-.8l.4-1.9h2.9l.4 1.9a8 8 0 0 1 1.5.8l1.8-.6 1.5 2.5-1.6 1.2a7 7 0 0 1 0 2.3Z" transform="translate(-1 -1)"/></svg><span>Settings</span></button>
+    </nav>
+
+    <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="true"></div>
+    <div id="modal-root"></div>
+  </body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "name": "jandrishti",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.25.0",
+  "scripts": {
+    "build": "rm -rf dist && mkdir -p dist/assets && cp index.html script.js data.js manus-routes.json dist/ && cp assets/* dist/assets/ && tailwindcss -i ./styles.input.css -o ./dist/styles.css --minify",
+    "dev": "pnpm run build && python3 -m http.server 3000 --bind 0.0.0.0 --directory dist"
+  },
+  "devDependencies": {
+    "tailwindcss": "3.4.17"
+  }
+}
