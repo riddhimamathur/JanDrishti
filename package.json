@@ -3,10 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@11.25.0",
-"scripts": {
-  "build": "rm -rf public && mkdir -p public/assets && cp index.html script.js assistant.js data.js i18n.js map.js styles.css public/"
-}
+  "scripts": {
+    "build": "rm -rf public && mkdir -p public/assets && cp index.html script.js assistant.js data.js i18n.js manus-routes.json public/ && cp -R assets/. public/assets/ && tailwindcss -i ./styles.input.css -o ./public/styles.css --minify"
   },
   "devDependencies": {
     "tailwindcss": "3.4.17"
