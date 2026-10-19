@@ -69,32 +69,4 @@ flowchart TD
 ```
 
 The assistant uses predefined lookup logic, not a live AI model.
-
-## 🚀 Run Locally
-
-**Prerequisites:** Node.js, Corepack, and Git.
-
-```bash
-git clone https://github.com/riddhimamathur/JanDrishti.git
-cd JanDrishti
-corepack enable
-pnpm install
-pnpm build
-pnpm dev
-```
-
-Open **http://localhost:3000** in your browser.
-
-## ⚠️ Disclaimer
-
-- All project records and updates are fictional sample data.
-- Images are illustrative and do not verify real projects.
-- Sign-in, bookmarks, history, and settings are demo features.
-- No backend, government API, or live AI provider is connected.
-- Geolocation is requested only when the user selects **Use my location**.
-
-See [ASSET-SOURCES.md](./ASSET-SOURCES.md) for image references.
-
----
-
 **JanDrishti 🇮🇳 — Explore. Understand. Stay Informed.**
