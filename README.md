@@ -1,33 +1,100 @@
-# JanDrishti
+# 🇮🇳 JanDrishti — Civic Project Tracker
 
-A responsive, client-side civic project tracker prototype built with HTML5, Tailwind CSS, and vanilla JavaScript. It includes an activity feed, project search and filters, a schematic India map, eight language choices (English, Hindi, Gujarati, Marathi, Odia, Bengali, Telugu, Kannada), bookmarks, local browsing history, notifications, mock sign-in, theme settings, and demo feedback forms. Navigation, common dialogs, sample explanations, and the persistent **Friendly Professor** assistant follow the selected language. The assistant offers a full-screen bot or a small floating widget and answers questions from the included sample project records.
+**A responsive, multilingual dashboard prototype for exploring civic projects and their updates.**
 
-All project records and updates are fictional sample data. Photos are illustrative and do not verify any listed project, place, budget, or status. Project names, places, and official department names are preserved as source identifiers; descriptive summaries and the latest update are localized. See [ASSET-SOURCES.md](./ASSET-SOURCES.md) for image references. Sign-in, bookmarks, history, theme, chat history, and read notifications are local browser demo behavior; no account, live AI provider, government API, or backend service is connected. Assistant answers are deterministic lookups over the sample records, not generated or official statements. Geolocation is requested only after a visitor chooses “Use my location.”
+JanDrishti is built using HTML5, Tailwind CSS, and Vanilla JavaScript to make civic project information easier to explore and understand.
 
-## Run locally
+## ✨ Features
 
-This project pins pnpm and Tailwind. Install dependencies, compile the local Tailwind stylesheet, and start a static preview:
+- 📊 Activity feed with project updates
+- 🔍 Project search and filters
+- 🗺️ Schematic India map
+- 🌐 8 Indian language options
+- 🔖 Bookmarks and browsing history
+- 🔔 Notifications and mock sign-in
+- 🎨 Theme settings
+- 🤖 Friendly Professor chatbot
+- 💬 Full-screen chat and floating widget
+- 📝 Feedback forms
+- 📱 Responsive interface
 
-```sh
+## 🔄 Project Workflow
+
+```mermaid
+flowchart TD
+    A([Start]) --> B[Open JanDrishti]
+    B --> C[Explore Dashboard]
+    C --> D{Select Feature}
+    D --> E[Search Projects]
+    D --> F[View Updates]
+    D --> G[Save Bookmarks]
+    D --> H[Change Language or Theme]
+    D --> I[Ask Friendly Professor]
+    I --> J[Search Sample Records]
+    J --> K[Display Answer]
+    E --> L([Continue Exploring])
+    F --> L
+    G --> L
+    H --> L
+    K --> L
+```
+
+## 🛠️ Tech Stack
+
+```mermaid
+flowchart LR
+    A[JanDrishti] --> B[HTML5]
+    A --> C[Tailwind CSS]
+    A --> D[Vanilla JavaScript]
+    D --> E[UI Interactions]
+    D --> F[Local Storage]
+    D --> G[Chatbot Logic]
+```
+
+- **HTML5:** Page structure
+- **Tailwind CSS:** Responsive styling
+- **Vanilla JavaScript:** Interactions, localization, and chatbot logic
+- **Local Storage:** Demo preferences and user activity
+
+## 🤖 Friendly Professor
+
+```mermaid
+flowchart TD
+    A[User Question] --> B[Search Sample Project Records]
+    B --> C{Matching Information?}
+    C -->|Yes| D[Prepare Answer]
+    C -->|No| E[Show Fallback Response]
+    D --> F[Display Response]
+    E --> F
+```
+
+The assistant uses predefined lookup logic, not a live AI model.
+
+## 🚀 Run Locally
+
+**Prerequisites:** Node.js, Corepack, and Git.
+
+```bash
+git clone https://github.com/riddhimamathur/JanDrishti.git
+cd JanDrishti
 corepack enable
 pnpm install
 pnpm build
 pnpm dev
 ```
 
-Open `http://localhost:3000`. `pnpm dev` builds `dist/` before serving it. Each build writes the compiled Tailwind stylesheet both to `styles.css` at the project root and to `dist/styles.css`. The root stylesheet is committed so the exact files pushed by the GitHub commands below can also be served directly from a GitHub Pages repository root. The generated `dist/` directory is intentionally ignored by Git; source and build configuration are tracked instead.
+Open **http://localhost:3000** in your browser.
 
-## Push a separate copy to the requested GitHub repository
+## ⚠️ Disclaimer
 
-Run these commands from a fresh folder containing the project source (not the Manus-managed working copy, which has its own Git remote):
+- All project records and updates are fictional sample data.
+- Images are illustrative and do not verify real projects.
+- Sign-in, bookmarks, history, and settings are demo features.
+- No backend, government API, or live AI provider is connected.
+- Geolocation is requested only when the user selects **Use my location**.
 
-```sh
-git init
-git add .
-git commit -m "Build JanDrishti civic project dashboard"
-git branch -M main
-git remote add origin https://github.com/riddhimamathur/JanDrishti.git
-git push -u origin main --force
-```
+See [ASSET-SOURCES.md](./ASSET-SOURCES.md) for image references.
 
-**Caution:** `--force` replaces the remote `main` branch history with the local `main` history and can discard remote-only commits. Use it only when that overwrite is intentional. If `origin` already exists in your separate checkout, update it with `git remote set-url origin https://github.com/riddhimamathur/JanDrishti.git` instead of adding it again.
+---
+
+**JanDrishti 🇮🇳 — Explore. Understand. Stay Informed.**
