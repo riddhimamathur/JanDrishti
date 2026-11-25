@@ -133,6 +133,7 @@ function setProfile() {
   elements.profileLabel.textContent = name;
   elements.profileAvatar.textContent = state.user?.name?.trim()?.slice(0, 1)?.toUpperCase() || "G";
   elements.profileAvatar.setAttribute("aria-label", state.user ? `Signed in as ${name}` : "Sign in to your demo profile");
+  localizeDOM(elements.profileTrigger, state.language);
 }
 function applyTheme() {
   document.body.dataset.theme = state.theme;
