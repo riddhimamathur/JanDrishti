@@ -1046,3 +1046,7 @@ body.modal-open { overflow: hidden; }
 .real-map-host { display: block; height: 455px; }
 .real-map-host .real-map { position: absolute; inset: 0; }
 .real-map-loading { position: absolute; z-index: 1; inset: 45% 0 auto; text-align: center; color: var(--muted); }
+.map-live-pin { width: 26px; height: 26px; padding: 0; background: #2f9160; border: 3px solid #fff; border-radius: 50%; box-shadow: 0 1px 6px rgba(15,23,42,.4); cursor: pointer; }
+.map-live-pin.is-new { background: #e5a534; }
+.map-live-pin.is-ended { background: #738196; }
+.map-live-pin:focus-visible { outline: 3px solid var(--amber); outline-offset: 2px; }

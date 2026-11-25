@@ -375,6 +375,7 @@ function mountRealMap() {
   const host = document.querySelector("#real-map-host");
   if (!host) return;
   showRealMap(host, {
+    projects, states, stateName: state.mapState,
     onReady: () => host.querySelector(".real-map-loading")?.remove(),
     onFail: () => { state.liveMapFailed = true; if (state.view === "map") renderApp(); }
   });
