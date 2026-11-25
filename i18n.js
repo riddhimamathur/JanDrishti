@@ -133,7 +133,7 @@ const PHRASES = [
 ];
 
 const CORE_KEYS = {
-  Filters: "filter", History: "history", Saved: "saved", Home: "home", Map: "map", Updates: "updates", Settings: "settings", Notifications: "notifications", "Search projects, places, departments": "search", "Latest project updates": "latest", "View all projects": "viewAll", Ongoing: "ongoing", "New projects": "newProjects", "Recently ended": "ended", "Use my location": "location", Guest: "guest", "Across India": "allIndia", "No projects match these filters.": "noResults", "Reset filters": "reset"
+  Filters: "filter", History: "history", Saved: "saved", Home: "home", Map: "map", Updates: "updates", Settings: "settings", Notifications: "notifications", "Search projects, places, departments": "search", "Latest project updates": "latest", "View all projects": "viewAll", Ongoing: "ongoing", "New projects": "newProjects", "Completed": "ended", "Use my location": "location", Guest: "guest", "Across India": "allIndia", "No projects match these filters.": "noResults", "Reset filters": "reset"
 };
 const PHRASE_MAP = new Map(PHRASES.map(([english, ...localized]) => [english, Object.fromEntries(LANGS.slice(1).map((lang, index) => [lang, localized[index + 1]]).filter(([, value]) => value))]));
 const DYNAMIC_COPY = {

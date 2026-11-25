@@ -1,7 +1,7 @@
 import { projects, states, districtsByState, translations, notifications } from "./data.js";
 import { initializeAssistant } from "./assistant.js";
 import { localizeDOM, localizedProjectContent } from "./i18n.js";
-import { sortNewest, distanceKm, selectProjects, countResults, isSuggestedHome, availableSorts, effectiveSort, orderDistricts } from "./logic.js";
+import { sortNewest, distanceKm, selectProjects, countResults, isSuggestedHome, availableSorts, effectiveSort, orderDistricts, cleanIdList, cleanUser, updatesNewestFirst, nearestProject } from "./logic.js";
 
 const STORAGE = {
   bookmarks: "jandrishti.bookmarks",
@@ -30,12 +30,12 @@ const state = {
   filters: { department: "", state: "", district: "", startDate: "" },
   filtersFromMap: false, // set by a map district click; such filters are dropped on Home
   sort: "auto",
-  language: safeRead(STORAGE.language, "en"),
-  theme: safeRead(STORAGE.theme, "light"),
-  bookmarks: new Set(safeRead(STORAGE.bookmarks, [])),
-  history: safeRead(STORAGE.history, []),
-  user: safeRead(STORAGE.user, null),
-  readNotifications: new Set(safeRead(STORAGE.readNotifications, [])),
+  language: savedLanguage(),
+  theme: safeRead(STORAGE.theme, "light") === "dark" ? "dark" : "light",
+  bookmarks: new Set(cleanIdList(safeRead(STORAGE.bookmarks, []), projects.map(project => project.id))),
+  history: cleanIdList(safeRead(STORAGE.history, []), projects.map(project => project.id)),
+  user: cleanUser(safeRead(STORAGE.user, null)),
+  readNotifications: new Set(cleanIdList(safeRead(STORAGE.readNotifications, []), notifications.map(item => item.id))),
   locationEnabled: false,
   locationCoords: null,
   fallbackOrder: loadFallbackOrder()
@@ -76,6 +76,10 @@ function safeRead(key, fallback) {
 function safeWrite(key, value) {
   try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* Private browsing may disable storage. */ }
 }
+function savedLanguage() {
+  const value = safeRead(STORAGE.language, "en");
+  return Object.hasOwn(translations, value) ? value : "en";
+}
 function loadFallbackOrder() {
   const ids = projects.filter(project => project.status === "ongoing").map(project => project.id);
   try {
@@ -102,7 +106,7 @@ function formatDate(value, options = { day: "numeric", month: "short", year: "nu
 }
 function formatShortDate(value) { return formatDate(value, { day: "numeric", month: "short" }); }
 function statusLabel(status) {
-  if (status === "new") return state.language === "en" ? "New this month" : `${t("newProjects")}`;
+  if (status === "new") return "New";
   if (status === "ended") return t("ended");
   return state.language === "en" ? "In progress" : t("ongoing");
 }
@@ -159,8 +163,7 @@ function applyLanguage() {
 function updateActiveNav() {
   document.querySelectorAll("[data-view]").forEach(button => {
     const view = button.dataset.view;
-    const active = (view === "feed" && ["feed", "history", "saved", "updates"].includes(state.view)) ? state.view === "feed" : view === state.view;
-    button.classList.toggle("is-active", active);
+    button.classList.toggle("is-active", view === state.view);
   });
 }
 function currentProjects() { return selectProjects(projects, state); }
@@ -230,18 +233,17 @@ function emptyState(title, description, buttonText = "Clear filters", action = "
   return `<div class="empty-state"><div class="empty-state-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.5 4.5"/></svg></div><h3>${escapeHtml(title)}</h3><p>${escapeHtml(description)}</p><button class="button button-secondary button-small" type="button" data-action="${action}">${escapeHtml(buttonText)}</button></div>`;
 }
 function recentActivity(limit = 3) {
-  return projects.flatMap(project => project.updates.slice(0, 1).map(update => ({ project, update }))).sort((a, b) => b.update.date.localeCompare(a.update.date)).slice(0, limit);
+  return projects.map(project => ({ project, update: updatesNewestFirst(project, localizedProjectContent(project, state.language).latestUpdate)[0] })).filter(item => item.update).sort((a, b) => b.update.date.localeCompare(a.update.date)).slice(0, limit);
 }
 function renderTimeline() {
-  return `<div class="timeline">${recentActivity(3).map(({ project, update }) => `<div class="timeline-item"><span class="timeline-track"><i></i></span><div class="timeline-copy"><strong>${escapeHtml(project.title)}</strong><p>${escapeHtml(localizedProjectContent(project, state.language).latestUpdate)}</p><time>${formatShortDate(update.date)} · ${escapeHtml(project.district)}</time></div></div>`).join("")}</div>`;
+  return `<div class="timeline">${recentActivity(3).map(({ project, update }) => `<div class="timeline-item"><span class="timeline-track"><i></i></span><div class="timeline-copy"><strong>${escapeHtml(project.title)}</strong><p>${escapeHtml(update.text)}</p><time>${formatShortDate(update.date)} · ${escapeHtml(project.district)}</time></div></div>`).join("")}</div>`;
 }
 function renderMiniMap() {
   return `<svg viewBox="60 20 430 500" role="img" aria-label="Illustrative map of India with project locations"><path class="india-shape" d="M243 27 274 40 294 56 322 61 333 78 365 95 383 120 407 135 422 164 444 178 451 209 435 231 450 257 432 283 416 302 399 330 380 347 369 379 350 411 335 443 316 474 293 505 276 481 256 460 239 431 215 418 201 393 180 375 158 350 138 326 119 301 105 274 103 247 117 223 134 204 138 177 159 162 174 143 195 131 210 108 232 87 238 61Z"/>${markerPositions.slice(0, 7).map(point => `<circle class="map-point-hit" cx="${point.x}" cy="${point.y}" r="12" data-state="${escapeHtml(point.name)}" role="button" tabindex="0" aria-label="Show projects in ${escapeHtml(point.name)}"><title>${escapeHtml(point.name)}</title></circle><circle class="map-point ${state.mapState === point.name ? "is-selected" : ""}" cx="${point.x}" cy="${point.y}" r="5" pointer-events="none"/>`).join("")}</svg>`;
 }
 function renderGlanceCard() {
   const stats = statsFor(projects);
-  const place = state.locationEnabled && state.locationCoords ? "Near your location" : t("allIndia");
-  return `<section class="rail-card glance-card"><div class="rail-card-heading"><h3>Project snapshot</h3><span>Sample data</span></div><div class="glance-location">${locationIcon()}<span>${place}</span></div><div class="metrics-list">
+  return `<section class="rail-card glance-card"><div class="rail-card-heading"><h3>Project snapshot</h3><span>Sample data</span></div><div class="glance-location">${locationIcon()}<span>${t("allIndia")}</span></div><div class="metrics-list">
     <div class="metric-row"><span class="metric-label"><i class="metric-dot"></i>${t("ongoing")} projects</span><strong>${stats.ongoing}</strong></div>
     <div class="metric-row"><span class="metric-label"><i class="metric-dot new"></i>${t("newProjects")}</span><strong>${stats.newProjects}</strong></div>
     <div class="metric-row"><span class="metric-label"><i class="metric-dot ended"></i>${t("ended")}</span><strong>${stats.ended}</strong></div>
@@ -406,8 +408,8 @@ function openProject(projectId) {
   recordHistory(project.id);
   const saved = state.bookmarks.has(project.id);
   const projectCopy = localizedProjectContent(project, state.language);
-  const latestUpdate = project.updates.slice().sort((a, b) => b.date.localeCompare(a.date))[0];
-  showModal(`<span class="modal-eyebrow">PROJECT DETAILS · ILLUSTRATIVE SAMPLE</span><h2 class="modal-title">${escapeHtml(project.title)}</h2><div class="detail-topline"><span class="status-badge ${statusClass(project.status)}">${escapeHtml(statusLabel(project.status))}</span><span class="location-pill">${locationIcon()}<span>${escapeHtml(project.location)}</span></span></div><img class="detail-image" src="${escapeHtml(project.image)}" alt="${escapeHtml(project.imageAlt)}"/><p class="detail-summary">${escapeHtml(projectCopy.description)}</p><div class="detail-facts"><div class="detail-fact"><span>Department</span><strong>${escapeHtml(project.department)}</strong></div><div class="detail-fact"><span>Project budget</span><strong>${escapeHtml(project.budget)}</strong></div><div class="detail-fact"><span>Expected completion</span><strong>${formatDate(project.completion)}</strong></div></div><div class="progress-header"><span>Reported project progress · sample</span><strong>${project.progress}%</strong></div><div class="progress-track"><div class="progress-fill" style="width:${project.progress}%"></div></div><div class="update-list"><span class="eyebrow">RECENT PROJECT UPDATES</span>${latestUpdate ? `<div class="update-row"><time>${formatDate(latestUpdate.date, { day: "numeric", month: "short", year: "numeric" })}</time><p>${escapeHtml(projectCopy.latestUpdate)}</p></div>` : ""}</div><div class="modal-action-row"><button class="button ${saved ? "button-secondary" : "button-primary"}" type="button" data-modal-bookmark="${escapeHtml(project.id)}" aria-pressed="${saved}">${saved ? "★ Starred project" : "☆ Star this project"}</button><button class="button button-secondary" type="button" data-modal-close>Done</button></div><p class="form-note">Sample content only. This page is not connected to a government project database.</p>`);
+  const updateRows = updatesNewestFirst(project, projectCopy.latestUpdate).map(update => `<div class="update-row"><time>${formatDate(update.date)}</time><p>${escapeHtml(update.text)}</p></div>`).join("");
+  showModal(`<span class="modal-eyebrow">PROJECT DETAILS · ILLUSTRATIVE SAMPLE</span><h2 class="modal-title">${escapeHtml(project.title)}</h2><div class="detail-topline"><span class="status-badge ${statusClass(project.status)}">${escapeHtml(statusLabel(project.status))}</span><span class="location-pill">${locationIcon()}<span>${escapeHtml(project.location)}</span></span></div><img class="detail-image" src="${escapeHtml(project.image)}" alt="${escapeHtml(project.imageAlt)}"/><p class="detail-summary">${escapeHtml(projectCopy.description)}</p><div class="detail-facts"><div class="detail-fact"><span>Department</span><strong>${escapeHtml(project.department)}</strong></div><div class="detail-fact"><span>Project budget</span><strong>${escapeHtml(project.budget)}</strong></div><div class="detail-fact"><span>Expected completion</span><strong>${formatDate(project.completion)}</strong></div></div><div class="progress-header"><span>Reported project progress · sample</span><strong>${project.progress}%</strong></div><div class="progress-track"><div class="progress-fill" style="width:${project.progress}%"></div></div><div class="update-list"><span class="eyebrow">RECENT PROJECT UPDATES</span>${updateRows}</div><div class="modal-action-row"><button class="button ${saved ? "button-secondary" : "button-primary"}" type="button" data-modal-bookmark="${escapeHtml(project.id)}" aria-pressed="${saved}">${saved ? "★ Starred project" : "☆ Star this project"}</button><button class="button button-secondary" type="button" data-modal-close>Done</button></div><p class="form-note">Sample content only. This page is not connected to a government project database.</p>`);
 }
 function trapModalFocus(event, dialog) {
   if (event.key !== "Tab") return;
@@ -441,7 +443,7 @@ function closeModal() {
 function openAuth(mode = "signin") {
   const signUp = mode === "signup";
   const title = signUp ? "Create your JanDrishti profile" : "Sign in to JanDrishti";
-  const fields = `${signUp ? `<div class="form-group"><label for="auth-name">Your name</label><input id="auth-name" name="name" autocomplete="name" placeholder="e.g. Asha Sharma" required /></div>` : ""}<div class="form-group"><label for="auth-email">Email address</label><input id="auth-email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required /></div>${signUp ? `<div class="form-group"><label for="auth-city">City or district (optional)</label><input id="auth-city" name="city" placeholder="e.g. Jaipur" /></div>` : ""}`;
+  const fields = `${signUp ? `<div class="form-group"><label for="auth-name">Your name</label><input id="auth-name" name="name" autocomplete="name" placeholder="e.g. Asha Sharma" required /></div>` : ""}<div class="form-group"><label for="auth-email">Email address</label><input id="auth-email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required /></div>`;
   showModal(`<span class="modal-eyebrow">CITIZEN PROFILE · DEMO MODE</span><h2 class="modal-title">${title}</h2><p class="modal-intro">Save the projects you care about and keep your recently viewed list on this device. This demo does not create a real account.</p><form class="modal-form" id="auth-form" data-mode="${signUp ? "signup" : "signin"}">${fields}<p class="form-note">Mock sign-in only: information stays in this browser and is not sent anywhere.</p><button class="button button-primary" type="submit">${signUp ? "Create demo profile" : "Continue as a demo user"}</button></form><p class="auth-switch">${signUp ? "Already have a profile?" : "New to JanDrishti?"} <button type="button" data-auth-mode="${signUp ? "signin" : "signup"}">${signUp ? "Sign in" : "Sign up"}</button></p>`);
 }
 function renderProfilePanel() {
@@ -452,7 +454,7 @@ function renderProfilePanel() {
 function renderNotifications() {
   const unread = notifications.some(item => item.unread && !state.readNotifications.has(item.id));
   document.querySelector(".notification-dot").hidden = !unread;
-  elements.notificationPanel.innerHTML = `<div class="notification-head"><h3>${t("notifications")}</h3><button class="text-button" type="button" data-action="mark-notifications-read">Mark read</button></div>${notifications.map(item => `<button class="notification-item" type="button" data-open-project="${escapeHtml(item.projectId)}" data-notification="${escapeHtml(item.id)}"><span class="notification-mark"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5m0 14h17M8 15l4-4 3 2 5-6"/></svg></span><span class="notification-copy"><strong>${escapeHtml(item.label)}${item.unread && !state.readNotifications.has(item.id) ? `<i class="unread-dot"></i>` : ""}</strong><p>${escapeHtml(item.text)}</p><small>${escapeHtml(item.when)}</small></span></button>`).join("")}`;
+  elements.notificationPanel.innerHTML = `<div class="notification-head"><h3>${t("notifications")}</h3><button class="text-button" type="button" data-action="mark-notifications-read">Mark read</button></div>${notifications.map(item => `<button class="notification-item" type="button" data-open-project="${escapeHtml(item.projectId)}" data-notification="${escapeHtml(item.id)}"><span class="notification-mark"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5m0 14h17M8 15l4-4 3 2 5-6"/></svg></span><span class="notification-copy"><strong>${escapeHtml(item.label)}${item.unread && !state.readNotifications.has(item.id) ? `<i class="unread-dot"></i>` : ""}</strong><p>${escapeHtml(item.text)}</p><small><time datetime="${escapeHtml(item.at)}">${escapeHtml(new Intl.DateTimeFormat(locale(), { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(item.at)))}</time></small></span></button>`).join("")}`;
   localizeDOM(elements.notificationPanel, state.language);
 }
 function openSettings() {
@@ -465,7 +467,7 @@ function refreshSettings() {
 function openFeedback(type) {
   const bug = type === "bug";
   const title = bug ? "Report a bug" : "Share feedback";
-  showModal(`<span class="modal-eyebrow">${bug ? "REPORT AN ISSUE" : "HELP US IMPROVE"}</span><h2 class="modal-title">${title}</h2><p class="modal-intro">This is a local demo form. Nothing is sent to a server.</p><form class="modal-form" id="feedback-form" data-type="${bug ? "bug" : "feedback"}"><div class="form-group"><label for="feedback-category">${bug ? "Where did you notice it?" : "What is your suggestion about?"}</label><select id="feedback-category" required><option value="">Choose a topic</option><option>Project information</option><option>Maps and locations</option><option>Accessibility</option><option>Search and filters</option><option>Something else</option></select></div><div class="form-group"><label for="feedback-message">${bug ? "What happened?" : "Your feedback"}</label><textarea id="feedback-message" required minlength="8" placeholder="A few details help us understand…"></textarea></div><button class="button button-primary" type="submit">${bug ? "Save demo report" : "Save demo feedback"}</button></form>`);
+  showModal(`<span class="modal-eyebrow">${bug ? "REPORT AN ISSUE" : "HELP US IMPROVE"}</span><h2 class="modal-title">${title}</h2><p class="modal-intro">This is a local demo form. Nothing is sent to a server.</p><p class="form-note">This demo does not keep your message.</p><form class="modal-form" id="feedback-form" data-type="${bug ? "bug" : "feedback"}"><div class="form-group"><label for="feedback-category">${bug ? "Where did you notice it?" : "What is your suggestion about?"}</label><select id="feedback-category" required><option value="">Choose a topic</option><option>Project information</option><option>Maps and locations</option><option>Accessibility</option><option>Search and filters</option><option>Something else</option></select></div><div class="form-group"><label for="feedback-message">${bug ? "What happened?" : "Your feedback"}</label><textarea id="feedback-message" required minlength="8" placeholder="A few details help us understand…"></textarea></div><button class="button button-primary" type="submit">${bug ? "Submit demo report" : "Submit demo feedback"}</button></form>`);
 }
 function requestLocation() {
   if (state.locationEnabled) {
@@ -485,14 +487,8 @@ function requestLocation() {
     state.locationCoords = { latitude: position.coords.latitude, longitude: position.coords.longitude };
     state.locationEnabled = true;
     state.sort = "auto";
-    const closest = [...states].sort((a, b) => {
-      const projectA = projects.find(project => project.state === a.name);
-      const projectB = projects.find(project => project.state === b.name);
-      if (!projectA) return 1;
-      if (!projectB) return -1;
-      return distanceFromLocation(projectA) - distanceFromLocation(projectB);
-    }).find(item => projects.some(project => project.state === item.name));
-    showToast(`Nearby sorting enabled. Closest sample projects are in ${closest?.name || "India"}.`);
+    const closest = nearestProject(state.locationCoords, projects).state;
+    showToast(`Nearby sorting enabled. Closest sample projects are in ${closest}.`);
     renderApp();
     refreshSettings();
   }, error => {
@@ -669,7 +665,7 @@ document.addEventListener("submit", event => {
     event.preventDefault();
     const bug = event.target.dataset.type === "bug";
     closeModal();
-    showToast(bug ? "Bug report saved in this demo. Nothing was sent." : "Feedback saved in this demo. Nothing was sent.");
+    showToast(bug ? "This demo does not keep your report. Nothing was saved or sent." : "This demo does not keep your feedback. Nothing was saved or sent.");
   }
 });
 
