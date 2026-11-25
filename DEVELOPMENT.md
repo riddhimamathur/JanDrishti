@@ -36,3 +36,13 @@ After editing `styles.input.css`, build and copy `public/styles.css` over `style
 - The map is a rough drawing, not to scale.
 - Photos are illustrative; some do not match their project, and reuse rights are unconfirmed (see `ASSET-SOURCES.md`).
 - The district lists are partial and need checking against an official source.
+
+## Live map (switched off)
+`realmap.js` can show an OpenFreeMap map through MapLibre. `REAL_MAP` is `false`.
+
+Do **not** turn it on until:
+1. India's borders are drawn from an official Survey of India boundary file, with conflicting lines hidden, and the file's reuse terms allow it.
+2. The result has been checked at every zoom level (especially Jammu and Kashmir, Ladakh and Arunachal Pradesh) and approved.
+3. The map credit is visible, and the privacy text says that the map service receives map requests.
+
+If the live map cannot load, the drawn map is shown instead.
