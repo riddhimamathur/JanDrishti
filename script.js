@@ -2,6 +2,7 @@ import { projects, states, districtsByState, translations, notifications } from 
 import { initializeAssistant } from "./assistant.js";
 import { localizeDOM, localizedProjectContent } from "./i18n.js";
 import { sortNewest, distanceKm, selectProjects, countResults, isSuggestedHome, availableSorts, effectiveSort, orderDistricts, cleanIdList, cleanUser, updatesNewestFirst, nearestProject, routeFor, parseRoute } from "./logic.js";
+import { realMapAvailable, showRealMap } from "./realmap.js";
 
 const STORAGE = {
   bookmarks: "jandrishti.bookmarks",
@@ -25,6 +26,7 @@ const state = {
   view: "feed",
   mapState: "",
   mapDistrict: "",
+  liveMapFailed: false,
   showAllDistricts: false,
   search: "",
   filters: { department: "", state: "", district: "", startDate: "" },
@@ -332,11 +334,16 @@ function renderStatePanel() {
     <div class="state-panel-section"><div class="state-panel-section-heading"><h3>Latest in view</h3><span>${localProjectList.length ? `${localProjectList.length} shown` : "No sample projects"}</span></div><div class="map-project-list">${localProjectList.length ? localProjectList.map(project => `<button class="map-project-row" type="button" data-open-project="${escapeHtml(project.id)}"><span><strong>${escapeHtml(project.title)}</strong><small>${escapeHtml(project.district)} · ${escapeHtml(statusLabel(project.status))}</small></span><span>${project.progress}%</span></button>`).join("") : `<p class="form-note">No sample projects are listed for this state yet. Choose another state to explore mock records.</p>`}</div></div>
   </aside>`;
 }
+function renderMapCanvas(mapProjects) {
+  if (realMapAvailable()) return `<div class="map-canvas real-map-host" id="real-map-host"><p class="real-map-loading">Loading the map…</p></div>`;
+  const notice = state.liveMapFailed ? `<p class="form-note" role="status">The live map could not load. Showing the drawn map.</p>` : "";
+  return `${notice}<div class="map-canvas">${renderMapDrawing()}<span class="map-click-hint">${locationIcon()} Select a state marker or district</span><span class="map-canvas-legend">Schematic map · not to scale</span>${state.mapState ? `<div class="state-map-popup"><strong>${escapeHtml(state.mapState)}</strong><span>${mapProjects.length} sample projects</span></div>` : ""}</div>`;
+}
 function renderMap() {
   const title = state.mapState || t("allIndia");
   const mapProjects = state.mapState ? stateProjects(state.mapState) : projects;
   return `<div class="main-content"><section class="page-heading"><div><span class="eyebrow">CITIZEN PROJECT MAP · SAMPLE VIEW</span><h1>${state.mapState ? `${escapeHtml(state.mapState)} projects` : "Explore projects across India"}</h1><p>Choose a state or district to see sample projects, activity, and status counts. Map boundaries are illustrative.</p></div><div class="page-heading-actions">${state.mapState ? `<button class="button button-secondary button-small" type="button" data-action="clear-map-state">← ${t("allIndia")}</button>` : `<button class="button button-secondary button-small" type="button" data-action="location">${locationIcon()} ${t("location")}</button>`}</div></section>
-    <div class="map-page-layout"><section class="map-panel"><div class="map-panel-heading"><div><h2>${state.mapState ? `${escapeHtml(state.mapState)} · state view` : "India · project distribution"}</h2><p>${state.mapState ? "A focused, illustrative view of the selected state." : "Select a marked state to open its project overview."}</p></div><div class="map-status-legend"><span><i></i>${t("ongoing")}</span><span><i class="new"></i>${t("newProjects")}</span></div></div><div class="map-canvas">${renderMapDrawing()}<span class="map-click-hint">${locationIcon()} Select a state marker or district</span><span class="map-canvas-legend">Schematic map · not to scale</span>${state.mapState ? `<div class="state-map-popup"><strong>${escapeHtml(state.mapState)}</strong><span>${mapProjects.length} sample projects</span></div>` : ""}</div>${mapSummary(mapProjects, title)}</section>${renderStatePanel()}</div>
+    <div class="map-page-layout"><section class="map-panel"><div class="map-panel-heading"><div><h2>${state.mapState ? `${escapeHtml(state.mapState)} · state view` : "India · project distribution"}</h2><p>${state.mapState ? "A focused, illustrative view of the selected state." : "Select a marked state to open its project overview."}</p></div><div class="map-status-legend"><span><i></i>${t("ongoing")}</span><span><i class="new"></i>${t("newProjects")}</span></div></div>${renderMapCanvas(mapProjects)}${mapSummary(mapProjects, title)}</section>${renderStatePanel()}</div>
     <section class="rail-card all-states-section"><div class="state-panel-section-heading"><h3>Browse any state or union territory</h3><span>${states.length} locations · mock data may be empty</span></div><div class="district-list all-state-choices">${states.map(item => `<button class="district-chip ${state.mapState === item.name ? "is-active" : ""}" type="button" data-state="${escapeHtml(item.name)}">${escapeHtml(item.name)}<small>${stateProjects(item.name).length}</small></button>`).join("")}</div></section>
   </div>`;
 }
@@ -364,6 +371,14 @@ function announceResults() {
   const status = document.querySelector("#result-status");
   if (status.dataset.message !== `${state.language} ${message}`) { status.dataset.message = `${state.language} ${message}`; status.textContent = message; }
 }
+function mountRealMap() {
+  const host = document.querySelector("#real-map-host");
+  if (!host) return;
+  showRealMap(host, {
+    onReady: () => host.querySelector(".real-map-loading")?.remove(),
+    onFail: () => { state.liveMapFailed = true; if (state.view === "map") renderApp(); }
+  });
+}
 function renderApp() {
   syncUrl();
   updateFilterBadge();
@@ -371,6 +386,7 @@ function renderApp() {
   if (state.view === "map") elements.app.innerHTML = renderMap();
   else elements.app.innerHTML = renderFeed();
   announceResults();
+  mountRealMap();
   localizeDOM(document.body, state.language);
   if (state.view === "map") {
     document.querySelectorAll("[data-map-district]").forEach(button => button.addEventListener("click", event => {

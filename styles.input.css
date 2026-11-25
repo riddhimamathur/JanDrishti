@@ -1043,3 +1043,6 @@ body.fp-fullscreen-active { overflow: hidden; }
 @media (max-width: 380px) { .image-caption { max-width: calc(100% - 10px); } }
 body.modal-open { overflow: hidden; }
 @media (max-width: 740px) { .mobile-nav button { width: auto; flex: 1; min-width: 0; min-height: 44px; } }
+.real-map-host { display: block; height: 455px; }
+.real-map-host .real-map { position: absolute; inset: 0; }
+.real-map-loading { position: absolute; z-index: 1; inset: 45% 0 auto; text-align: center; color: var(--muted); }
