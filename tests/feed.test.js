@@ -34,8 +34,13 @@ test("nearby home lists every project, closest first", () => {
   assert.equal(list[0].id, "bikaner-solar-health");
 });
 
+test("filters and a chosen sort look at every project", () => {
+  assert.deepEqual(ids(selectProjects(projects, makeState({ filters: { ...noFilters, state: "Maharashtra" } }))), ["pune-elevated-corridor"]);
+  assert.equal(selectProjects(projects, makeState({ sort: "recent" })).length, projects.length);
+});
+
 // Known bugs. Remove the todo mark in the commit that fixes each one.
-test("B1: search covers every project", { todo: "fixed in P1.1" }, () => {
+test("B1: search covers every project", () => {
   assert.deepEqual(ids(selectProjects(projects, makeState({ search: "Bikaner" }))), ["bikaner-solar-health"]);
 });
 test("B2: filter count equals the number of cards", { todo: "fixed in P1.2" }, () => {
