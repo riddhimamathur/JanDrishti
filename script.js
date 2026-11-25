@@ -1,7 +1,7 @@
 import { projects, states, districtsByState, translations, notifications } from "./data.js";
 import { initializeAssistant } from "./assistant.js";
 import { localizeDOM, localizedProjectContent } from "./i18n.js";
-import { sortNewest, distanceKm, selectProjects, countResults, isSuggestedHome, availableSorts, effectiveSort, orderDistricts, cleanIdList, cleanUser, updatesNewestFirst, nearestProject } from "./logic.js";
+import { sortNewest, distanceKm, selectProjects, countResults, isSuggestedHome, availableSorts, effectiveSort, orderDistricts, cleanIdList, cleanUser, updatesNewestFirst, nearestProject, routeFor, parseRoute } from "./logic.js";
 
 const STORAGE = {
   bookmarks: "jandrishti.bookmarks",
@@ -31,7 +31,7 @@ const state = {
   filtersFromMap: false, // set by a map district click; such filters are dropped on Home
   sort: "auto",
   language: savedLanguage(),
-  theme: safeRead(STORAGE.theme, "light") === "dark" ? "dark" : "light",
+  theme: savedTheme(),
   bookmarks: new Set(cleanIdList(safeRead(STORAGE.bookmarks, []), projects.map(project => project.id))),
   history: cleanIdList(safeRead(STORAGE.history, []), projects.map(project => project.id)),
   user: cleanUser(safeRead(STORAGE.user, null)),
@@ -64,6 +64,7 @@ const elements = {
   toastRegion: document.querySelector("#toast-region")
 };
 let modalReturnFocus = null;
+let routerReady = false; // stays false until the address the page opened with has been read
 
 function safeRead(key, fallback) {
   try {
@@ -75,6 +76,11 @@ function safeRead(key, fallback) {
 }
 function safeWrite(key, value) {
   try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* Private browsing may disable storage. */ }
+}
+function savedTheme() {
+  const value = safeRead(STORAGE.theme, null);
+  if (value === "dark" || value === "light") return value;
+  return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light"; // same rule as the script in index.html
 }
 function savedLanguage() {
   const value = safeRead(STORAGE.language, "en");
@@ -148,6 +154,7 @@ function applyLanguage() {
   document.querySelector("#filter-trigger [data-i18n='filter']").textContent = t("filter");
   document.querySelectorAll(".mobile-nav [data-view='feed'] span").forEach(el => el.textContent = t("home"));
   document.querySelectorAll(".mobile-nav [data-view='map'] span").forEach(el => el.textContent = t("map"));
+  document.querySelectorAll(".mobile-nav [data-view='updates'] span").forEach(el => el.textContent = t("updates"));
   document.querySelectorAll(".mobile-nav [data-view='saved'] span").forEach(el => el.textContent = t("saved"));
   document.querySelectorAll(".mobile-nav [data-view='history'] span").forEach(el => el.textContent = t("history"));
   document.querySelectorAll(".side-link[data-view='feed'] .side-tooltip").forEach(el => el.textContent = t("home"));
@@ -240,7 +247,7 @@ function renderTimeline() {
   return `<div class="timeline">${recentActivity(3).map(({ project, update }) => `<div class="timeline-item"><span class="timeline-track"><i></i></span><div class="timeline-copy"><strong>${escapeHtml(project.title)}</strong><p>${escapeHtml(update.text)}</p><time>${formatShortDate(update.date)} · ${escapeHtml(project.district)}</time></div></div>`).join("")}</div>`;
 }
 function renderMiniMap() {
-  return `<svg viewBox="60 20 430 500" role="img" aria-label="Illustrative map of India with project locations"><path class="india-shape" d="M243 27 274 40 294 56 322 61 333 78 365 95 383 120 407 135 422 164 444 178 451 209 435 231 450 257 432 283 416 302 399 330 380 347 369 379 350 411 335 443 316 474 293 505 276 481 256 460 239 431 215 418 201 393 180 375 158 350 138 326 119 301 105 274 103 247 117 223 134 204 138 177 159 162 174 143 195 131 210 108 232 87 238 61Z"/>${markerPositions.slice(0, 7).map(point => `<circle class="map-point-hit" cx="${point.x}" cy="${point.y}" r="12" data-state="${escapeHtml(point.name)}" role="button" tabindex="0" aria-label="Show projects in ${escapeHtml(point.name)}"><title>${escapeHtml(point.name)}</title></circle><circle class="map-point ${state.mapState === point.name ? "is-selected" : ""}" cx="${point.x}" cy="${point.y}" r="5" pointer-events="none"/>`).join("")}</svg>`;
+  return `<svg viewBox="60 20 430 500" role="img" aria-label="Illustrative map of India with project locations"><path class="india-shape" d="M243 27 274 40 294 56 322 61 333 78 365 95 383 120 407 135 422 164 444 178 451 209 435 231 450 257 432 283 416 302 399 330 380 347 369 379 350 411 335 443 316 474 293 505 276 481 256 460 239 431 215 418 201 393 180 375 158 350 138 326 119 301 105 274 103 247 117 223 134 204 138 177 159 162 174 143 195 131 210 108 232 87 238 61Z"/>${markerPositions.slice(0, 7).map(point => `<circle class="map-point-hit" cx="${point.x}" cy="${point.y}" r="24" data-state="${escapeHtml(point.name)}" role="button" tabindex="0" aria-label="Show projects in ${escapeHtml(point.name)}"><title>${escapeHtml(point.name)}</title></circle><circle class="map-point ${state.mapState === point.name ? "is-selected" : ""}" cx="${point.x}" cy="${point.y}" r="5" pointer-events="none"/>`).join("")}</svg>`;
 }
 function renderGlanceCard() {
   const stats = statsFor(projects);
@@ -296,14 +303,14 @@ function renderStateMarkers() {
     const active = state.mapState === point.name;
     const count = stateProjects(point.name).length;
     const label = point.name === "Rajasthan" || point.name === "Gujarat" || point.name === "Karnataka" || point.name === "West Bengal";
-    return `<g class="state-marker ${active ? "is-active" : ""}" data-state="${escapeHtml(point.name)}" role="button" tabindex="0" aria-label="Open ${escapeHtml(point.name)} map, ${count} sample projects" title="${escapeHtml(point.name)} · ${count} sample projects"><circle class="map-point-hit" cx="${point.x}" cy="${point.y}" r="15"/><circle class="map-point ${active ? "is-selected" : ""}" cx="${point.x}" cy="${point.y}" r="${active ? 7 : 5}"/><text class="map-region-label" x="${point.x + 8}" y="${point.y + (index % 2 ? 4 : -7)}" ${label ? "" : "visibility=\"hidden\""}>${escapeHtml(point.name)}</text></g>`;
+    return `<g class="state-marker ${active ? "is-active" : ""}" data-state="${escapeHtml(point.name)}" role="button" tabindex="0" aria-label="Open ${escapeHtml(point.name)} map, ${count} sample projects" title="${escapeHtml(point.name)} · ${count} sample projects"><circle class="map-point-hit" cx="${point.x}" cy="${point.y}" r="27"/><circle class="map-point ${active ? "is-selected" : ""}" cx="${point.x}" cy="${point.y}" r="${active ? 7 : 5}"/><text class="map-region-label" x="${point.x + 8}" y="${point.y + (index % 2 ? 4 : -7)}" ${label ? "" : "visibility=\"hidden\""}>${escapeHtml(point.name)}</text></g>`;
   }).join("");
 }
 function renderMapDrawing() {
   return `<svg class="india-map-svg" viewBox="55 20 450 520" role="img" aria-label="Illustrative, interactive map of India; select a marked state">
     <path class="india-shape" d="M243 27 274 40 294 56 322 61 333 78 365 95 383 120 407 135 422 164 444 178 451 209 435 231 450 257 432 283 416 302 399 330 380 347 369 379 350 411 335 443 316 474 293 505 276 481 256 460 239 431 215 418 201 393 180 375 158 350 138 326 119 301 105 274 103 247 117 223 134 204 138 177 159 162 174 143 195 131 210 108 232 87 238 61Z"/>
     <path class="state-outline" d="M179 149 211 125 239 128 242 170 222 198 191 192 170 172Z"/><path class="state-outline" d="M132 211 166 193 201 203 211 240 190 266 151 259 119 240Z"/><path class="state-outline" d="M207 237 245 212 285 222 302 259 278 291 237 290 207 266Z"/><path class="state-outline" d="M217 301 250 285 276 308 271 358 249 386 225 363 215 332Z"/><path class="state-outline" d="M278 267 313 245 340 259 334 298 303 322 275 304Z"/><path class="state-outline" d="M288 171 324 150 353 166 365 199 339 224 306 217Z"/><path class="state-outline" d="M367 232 393 223 418 237 405 270 378 274 358 254Z"/>
-    <path d="M434 234q27-14 47 1m-46 9q32-4 53 12m-65-10q-14 19-29 23" fill="none" stroke="#ced9e6" stroke-width="5" stroke-linecap="round"/>
+    <path d="M434 234q27-14 47 1m-46 9q32-4 53 12m-65-10q-14 19-29 23" class="map-river" stroke-width="5" stroke-linecap="round"/>
     ${renderStateMarkers()}
     <circle class="map-point" cx="93" cy="328" r="3"/><circle class="map-point" cx="464" cy="317" r="3"/>
   </svg>`;
@@ -333,11 +340,37 @@ function renderMap() {
     <section class="rail-card all-states-section"><div class="state-panel-section-heading"><h3>Browse any state or union territory</h3><span>${states.length} locations · mock data may be empty</span></div><div class="district-list all-state-choices">${states.map(item => `<button class="district-chip ${state.mapState === item.name ? "is-active" : ""}" type="button" data-state="${escapeHtml(item.name)}">${escapeHtml(item.name)}<small>${stateProjects(item.name).length}</small></button>`).join("")}</div></section>
   </div>`;
 }
+// Keeps the address in step with the screen. While a project popup is open the address names the project.
+function syncUrl() {
+  if (!routerReady || location.hash.startsWith("#/project/")) return;
+  const target = routeFor(state);
+  if (location.hash !== target && !(location.hash === "" && target === "#/")) history.pushState({ inApp: true }, "", target);
+}
+// Shows what the address names: used on first load and for the Back and Forward buttons.
+function applyRoute() {
+  const route = parseRoute(location.hash, projects.map(project => project.id), states.map(item => item.name));
+  if (!route) return;
+  if (route.projectId) { closePopovers(); openProject(route.projectId); return; }
+  closeModal({ fromRoute: true });
+  if (route.view !== state.view || (route.view === "map" && route.mapState !== state.mapState)) {
+    if (route.view === "map") { state.mapState = route.mapState; state.mapDistrict = ""; state.showAllDistricts = false; }
+    setView(route.view);
+  }
+}
+// Screen readers hear only how many projects are listed, not the whole redrawn page.
+function announceResults() {
+  const count = state.view === "map" ? null : currentProjects().length;
+  const message = count === null ? "" : `${count} ${count === 1 ? "project" : "projects"}`;
+  const status = document.querySelector("#result-status");
+  if (status.dataset.message !== `${state.language} ${message}`) { status.dataset.message = `${state.language} ${message}`; status.textContent = message; }
+}
 function renderApp() {
+  syncUrl();
   updateFilterBadge();
   updateActiveNav();
   if (state.view === "map") elements.app.innerHTML = renderMap();
   else elements.app.innerHTML = renderFeed();
+  announceResults();
   localizeDOM(document.body, state.language);
   if (state.view === "map") {
     document.querySelectorAll("[data-map-district]").forEach(button => button.addEventListener("click", event => {
@@ -407,6 +440,8 @@ function openProject(projectId) {
   const project = projectById(projectId);
   if (!project) return;
   recordHistory(project.id);
+  const address = `#/project/${project.id}`;
+  if (location.hash !== address) history[location.hash.startsWith("#/project/") ? "replaceState" : "pushState"]({ inApp: true }, "", address);
   const saved = state.bookmarks.has(project.id);
   const projectCopy = localizedProjectContent(project, state.language);
   const updateRows = updatesNewestFirst(project, projectCopy.latestUpdate).map(update => `<div class="update-row"><time>${formatDate(update.date)}</time><p>${escapeHtml(update.text)}</p></div>`).join("");
@@ -420,9 +455,15 @@ function trapModalFocus(event, dialog) {
   if (event.shiftKey && (document.activeElement === first || !dialog.contains(document.activeElement))) { event.preventDefault(); last.focus(); }
   else if (!event.shiftKey && (document.activeElement === last || !dialog.contains(document.activeElement))) { event.preventDefault(); first.focus(); }
 }
+// While a popup is open the page behind it cannot be scrolled, clicked or read out.
+function setBackgroundBlocked(blocked) {
+  document.body.classList.toggle("modal-open", blocked);
+  document.querySelectorAll(".skip-link, .topbar, .sidebar, .main-shell, .mobile-nav, #assistant-root").forEach(element => { element.inert = blocked; });
+}
 function showModal(content, wide = false) {
   if (!elements.modalRoot.querySelector(".modal-card")) modalReturnFocus = document.activeElement;
   elements.modalRoot.innerHTML = `<div class="modal-overlay" data-modal-backdrop><section class="modal-card ${wide ? "modal-wide" : ""}" role="dialog" aria-modal="true"><button class="modal-close" type="button" data-modal-close aria-label="Close dialog">×</button>${content}</section></div>`;
+  setBackgroundBlocked(true);
   const dialog = elements.modalRoot.querySelector(".modal-card");
   const heading = dialog.querySelector(".modal-title");
   if (heading) { heading.id = "modal-title"; dialog.setAttribute("aria-labelledby", "modal-title"); }
@@ -431,9 +472,15 @@ function showModal(content, wide = false) {
   const firstFocusable = elements.modalRoot.querySelector("input, select, textarea, button:not(.modal-close)");
   window.setTimeout(() => firstFocusable?.focus(), 20);
 }
-function closeModal() {
+function closeModal({ fromRoute = false } = {}) {
   if (!elements.modalRoot.querySelector(".modal-card")) return;
+  if (!fromRoute && location.hash.startsWith("#/project/")) {
+    // Step back to where the popup was opened from. A shared link has nowhere to go back to.
+    if (history.state?.inApp) history.back();
+    else history.replaceState(null, "", routeFor(state));
+  }
   elements.modalRoot.innerHTML = "";
+  setBackgroundBlocked(false);
   const returnFocus = modalReturnFocus;
   modalReturnFocus = null;
   const projectId = returnFocus?.dataset?.openProject;
@@ -585,7 +632,7 @@ document.addEventListener("click", event => {
 
   if (actionButton) {
     const action = actionButton.dataset.action;
-    if (action === "home") { setView("feed"); return; }
+    if (action === "home") { event.preventDefault(); setView("feed"); return; }
     if (action === "close-filters") { elements.filterPanel.hidden = true; elements.filterTrigger.setAttribute("aria-expanded", "false"); return; }
     if (action === "reset-filters") { resetFilters(); closePopovers(); return; }
     if (action === "browse-all") { browseAll(); return; }
@@ -673,3 +720,7 @@ document.addEventListener("submit", event => {
 if (!state.language || !translations[state.language]) state.language = "en";
 initializeAssistant({ root: document.querySelector("#assistant-root"), getLanguage: () => state.language, onProjectOpen: openProject, sourceProjects: projects });
 applyLanguage();
+window.addEventListener("popstate", applyRoute);
+applyRoute();
+routerReady = true;
+syncUrl();

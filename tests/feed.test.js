@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { projects, districtsByState } from "../data.js";
-import { distanceKm, matchesFilters, selectProjects, countResults, availableSorts, effectiveSort, orderDistricts } from "../logic.js";
+import { distanceKm, matchesFilters, selectProjects, countResults, availableSorts, effectiveSort, orderDistricts, routeFor, parseRoute } from "../logic.js";
 
 const noFilters = { department: "", state: "", district: "", startDate: "" };
 const ongoing = projects.filter(project => project.status === "ongoing").map(project => project.id);
@@ -90,4 +90,15 @@ test("B7: every district with a project is within the first 18 of its state", ()
     assert.ok(list.indexOf(project.district) < 18, project.district);
     assert.equal(new Set(list).size, list.length);
   }
+});
+
+test("every screen has an address that leads back to it", () => {
+  const read = hash => parseRoute(hash, ["raja-park-road"], ["West Bengal"]);
+  for (const screen of [{ view: "feed", mapState: "" }, { view: "map", mapState: "" }, { view: "map", mapState: "West Bengal" }, { view: "updates", mapState: "" }, { view: "saved", mapState: "" }, { view: "history", mapState: "" }]) {
+    assert.deepEqual(read(routeFor(screen)), screen);
+  }
+  assert.deepEqual(read("#/project/raja-park-road"), { projectId: "raja-park-road" });
+  assert.equal(read("#main-content"), null);
+  for (const bad of ["#/project/none", "#/nonsense", "#/%E0%A4%A", ""]) assert.equal(read(bad).view, "feed", bad);
+  assert.deepEqual(read("#/map/%E0%A4%A"), { view: "map", mapState: "" });
 });

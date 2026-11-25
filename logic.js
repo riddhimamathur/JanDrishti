@@ -42,6 +42,21 @@ export function nearestProject(coords, projects) {
   return projects.reduce((best, project) => distanceKm(coords, project) < distanceKm(coords, best) ? project : best);
 }
 
+// Web addresses: #/  #/map  #/map/<state>  #/updates  #/saved  #/history  #/project/<id>
+export function routeFor({ view, mapState }) {
+  if (view === "map" && mapState) return `#/map/${encodeURIComponent(mapState)}`;
+  return view === "feed" ? "#/" : `#/${view}`;
+}
+// Returns null for ordinary page anchors such as "#main-content", which are not screens.
+export function parseRoute(hash, projectIds, stateNames) {
+  if (hash && !hash.startsWith("#/")) return null;
+  let [name, value = ""] = hash.slice(2).split("/");
+  try { value = decodeURIComponent(value); } catch { value = ""; }
+  if (name === "project" && projectIds.includes(value)) return { projectId: value };
+  if (name === "map") return { view: "map", mapState: stateNames.includes(value) ? value : "" };
+  return { view: ["updates", "saved", "history"].includes(name) ? name : "feed", mapState: "" };
+}
+
 const BASE_SORTS = ["recent", "oldest", "start", "az", "progress"];
 
 // Sort options that make sense on the current screen. The first one is its default.
