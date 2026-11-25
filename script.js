@@ -1,6 +1,7 @@
 import { projects, states, districtsByState, translations, notifications } from "./data.js";
 import { initializeAssistant } from "./assistant.js";
 import { localizeDOM, localizedProjectContent } from "./i18n.js";
+import { sortNewest, distanceKm, matchesFilters, selectProjects } from "./logic.js";
 
 const STORAGE = {
   bookmarks: "jandrishti.bookmarks",
@@ -97,7 +98,6 @@ function formatDate(value, options = { day: "numeric", month: "short", year: "nu
   return new Intl.DateTimeFormat(locale(), options).format(date);
 }
 function formatShortDate(value) { return formatDate(value, { day: "numeric", month: "short" }); }
-function sortNewest(a, b) { return b.updatedAt.localeCompare(a.updatedAt); }
 function statusLabel(status) {
   if (status === "new") return state.language === "en" ? "New this month" : `${t("newProjects")}`;
   if (status === "ended") return t("ended");
@@ -160,39 +160,9 @@ function updateActiveNav() {
     button.classList.toggle("is-active", active);
   });
 }
-function matchesFilters(project) {
-  const term = state.search.trim().toLowerCase();
-  const matchesSearch = !term || [project.title, project.department, project.location, project.state, project.district, project.description].some(value => value.toLowerCase().includes(term));
-  const f = state.filters;
-  return matchesSearch && (!f.department || project.department === f.department) && (!f.state || project.state === f.state) && (!f.district || project.district === f.district) && (!f.startDate || project.startDate >= f.startDate);
-}
-function currentProjects() {
-  let list = [...projects].filter(matchesFilters);
-  if (state.view === "saved") list = list.filter(project => state.bookmarks.has(project.id));
-  if (state.view === "history") list = list.filter(project => state.history.includes(project.id)).sort((a, b) => state.history.indexOf(a.id) - state.history.indexOf(b.id));
-  if (state.view === "updates") list = list.sort(sortNewest);
-  else if (state.view === "feed") {
-    if (state.locationCoords && state.locationEnabled) list = list.sort((a, b) => distanceFromLocation(a) - distanceFromLocation(b));
-    else {
-      const positions = new Map(state.fallbackOrder.map((id, index) => [id, index]));
-      list = list.filter(project => project.status === "ongoing").sort((a, b) => (positions.get(a.id) ?? Infinity) - (positions.get(b.id) ?? Infinity));
-    }
-  }
-  if (state.sort === "oldest") list.reverse();
-  if (state.sort === "start") list.sort((a, b) => b.startDate.localeCompare(a.startDate));
-  if (state.sort === "az") list.sort((a, b) => a.title.localeCompare(b.title));
-  if (state.sort === "progress") list.sort((a, b) => b.progress - a.progress);
-  return list;
-}
-function distanceFromLocation(project) {
-  if (!state.locationCoords) return 0;
-  const radians = number => number * Math.PI / 180;
-  const lat1 = radians(state.locationCoords.latitude), lat2 = radians(project.lat);
-  const dLat = lat2 - lat1, dLng = radians(project.lng - state.locationCoords.longitude);
-  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
-  return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-function filteredProjectsWithoutView() { return projects.filter(matchesFilters); }
+function currentProjects() { return selectProjects(projects, state); }
+function distanceFromLocation(project) { return distanceKm(state.locationCoords, project); }
+function filteredProjectsWithoutView() { return projects.filter(project => matchesFilters(project, state.search, state.filters)); }
 function filterCount() { return Object.values(state.filters).filter(Boolean).length; }
 function updateFilterBadge() {
   const count = filterCount();
