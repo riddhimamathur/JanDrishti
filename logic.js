@@ -23,9 +23,40 @@ export function matchesFilters(project, search, filters) {
 
 const hasLocation = state => Boolean(state.locationEnabled && state.locationCoords);
 
+const BASE_SORTS = ["recent", "oldest", "start", "az", "progress"];
+
+// Sort options that make sense on the current screen. The first one is its default.
+export function availableSorts(state) {
+  if (state.view === "history") return ["viewed", ...BASE_SORTS];
+  if (state.view === "feed") return [hasLocation(state) ? "nearest" : "suggested", ...BASE_SORTS];
+  return BASE_SORTS;
+}
+
+// "auto", or an option that does not exist on this screen, means the screen's default.
+export function effectiveSort(state) {
+  const options = availableSorts(state);
+  return options.includes(state.sort) ? state.sort : options[0];
+}
+
+const SORTERS = {
+  // Shuffled ongoing projects come first; any others follow, newest first.
+  suggested: state => {
+    const positions = new Map(state.fallbackOrder.map((id, index) => [id, index]));
+    const position = project => positions.get(project.id) ?? positions.size;
+    return (a, b) => position(a) - position(b) || sortNewest(a, b);
+  },
+  nearest: state => (a, b) => distanceKm(state.locationCoords, a) - distanceKm(state.locationCoords, b),
+  viewed: state => (a, b) => state.history.indexOf(a.id) - state.history.indexOf(b.id),
+  recent: () => sortNewest,
+  oldest: () => (a, b) => sortNewest(b, a),
+  start: () => (a, b) => b.startDate.localeCompare(a.startDate),
+  az: () => (a, b) => a.title.localeCompare(b.title),
+  progress: () => (a, b) => b.progress - a.progress
+};
+
 // The untouched home page: no location, search, filter or chosen sort. Only this page is limited to ongoing projects.
 export function isSuggestedHome(state) {
-  return state.view === "feed" && state.sort === "suggested" && !hasLocation(state) && !state.search.trim() && !Object.values(state.filters).some(Boolean);
+  return state.view === "feed" && effectiveSort(state) === "suggested" && !state.search.trim() && !Object.values(state.filters).some(Boolean);
 }
 
 // How many cards "Show projects" will reveal. The map has no list, so it leads to the feed.
@@ -37,21 +68,7 @@ export function countResults(projects, state) {
 export function selectProjects(projects, state) {
   let list = projects.filter(project => matchesFilters(project, state.search, state.filters));
   if (state.view === "saved") list = list.filter(project => state.bookmarks.has(project.id));
-  if (state.view === "history") list = list.filter(project => state.history.includes(project.id)).sort((a, b) => state.history.indexOf(a.id) - state.history.indexOf(b.id));
-  if (state.view === "updates") list = list.sort(sortNewest);
-  else if (state.view === "feed") {
-    if (hasLocation(state)) list = list.sort((a, b) => distanceKm(state.locationCoords, a) - distanceKm(state.locationCoords, b));
-    else if (state.sort === "suggested") {
-      // Shuffled ongoing projects come first; any others follow, newest first.
-      const positions = new Map(state.fallbackOrder.map((id, index) => [id, index]));
-      const position = project => positions.get(project.id) ?? positions.size;
-      if (isSuggestedHome(state)) list = list.filter(project => project.status === "ongoing");
-      list.sort((a, b) => position(a) - position(b) || sortNewest(a, b));
-    }
-  }
-  if (state.sort === "oldest") list.reverse();
-  if (state.sort === "start") list.sort((a, b) => b.startDate.localeCompare(a.startDate));
-  if (state.sort === "az") list.sort((a, b) => a.title.localeCompare(b.title));
-  if (state.sort === "progress") list.sort((a, b) => b.progress - a.progress);
-  return list;
+  if (state.view === "history") list = list.filter(project => state.history.includes(project.id));
+  if (isSuggestedHome(state)) list = list.filter(project => project.status === "ongoing");
+  return list.sort(SORTERS[effectiveSort(state)](state));
 }

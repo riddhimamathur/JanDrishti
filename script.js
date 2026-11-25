@@ -1,7 +1,7 @@
 import { projects, states, districtsByState, translations, notifications } from "./data.js";
 import { initializeAssistant } from "./assistant.js";
 import { localizeDOM, localizedProjectContent } from "./i18n.js";
-import { sortNewest, distanceKm, selectProjects, countResults, isSuggestedHome } from "./logic.js";
+import { sortNewest, distanceKm, selectProjects, countResults, isSuggestedHome, availableSorts, effectiveSort } from "./logic.js";
 
 const STORAGE = {
   bookmarks: "jandrishti.bookmarks",
@@ -12,6 +12,7 @@ const STORAGE = {
   readNotifications: "jandrishti.readNotifications"
 };
 const localeByLanguage = { en: "en-IN", hi: "hi-IN", gu: "gu-IN", mr: "mr-IN", or: "or-IN", bn: "bn-IN", te: "te-IN", kn: "kn-IN" };
+const SORT_LABELS = { suggested: "Suggested", nearest: "Nearest", viewed: "Recently viewed", recent: "Recently updated", oldest: "Oldest update", start: "Recently started", az: "Project name", progress: "Progress" };
 const markerPositions = [
   { name: "Rajasthan", x: 202, y: 187 }, { name: "Gujarat", x: 156, y: 255 },
   { name: "Maharashtra", x: 227, y: 297 }, { name: "Karnataka", x: 246, y: 374 },
@@ -26,7 +27,7 @@ const state = {
   mapDistrict: "",
   search: "",
   filters: { department: "", state: "", district: "", startDate: "" },
-  sort: "suggested",
+  sort: "auto",
   language: safeRead(STORAGE.language, "en"),
   theme: safeRead(STORAGE.theme, "light"),
   bookmarks: new Set(safeRead(STORAGE.bookmarks, [])),
@@ -258,7 +259,9 @@ function viewCopy() {
   if (state.view === "updates") return { title: "Project updates", subtitle: "The latest progress notes from the sample projects in JanDrishti.", emptyTitle: "No matching updates", emptyDescription: "Try a broader search or reset your filters." };
   const empty = { emptyTitle: t("noResults"), emptyDescription: "Adjust your search or filters to see more public projects." };
   if (isSuggestedHome(state)) return { title: "Suggested projects", subtitle: "A mix of ongoing sample projects. Search, filter or sort to look through all of them.", ...empty };
-  return { title: t("latest"), subtitle: state.locationEnabled ? "Updates are ordered by distance from your selected location." : "Latest updates from sample projects across India.", ...empty };
+  const sort = effectiveSort(state);
+  const subtitle = sort === "nearest" ? "Updates are ordered by distance from your selected location." : sort === "recent" ? "Latest updates from sample projects across India." : "Sample projects in your chosen order.";
+  return { title: t("latest"), subtitle, ...empty };
 }
 function renderFeed() {
   const list = currentProjects();
@@ -270,7 +273,7 @@ function renderFeed() {
   return `<div class="main-content">
     ${shouldShowHero ? `<section class="hero"><div class="hero-copy"><div class="hero-kicker"><i class="status-pulse"></i><span>CITIZEN PROJECT TRACKER · SAMPLE VIEW</span></div><h1>A clearer view of public work.</h1><p>Follow the projects shaping everyday life—from a road near your home to the water system your city depends on.</p></div><div class="hero-actions"><button class="button button-primary" type="button" data-action="location">${locationIcon()}<span>${state.locationEnabled ? "Location enabled" : t("location")}</span></button><span class="hero-location-note">${state.locationEnabled ? "Showing nearby sample projects" : "Browse updates from across India"}</span></div></section>` : `<section class="page-heading"><div><span class="eyebrow">JAN DRISHTI · CITIZEN PROJECT TRACKER</span><h1>${escapeHtml(copy.title)}</h1><p>${escapeHtml(copy.subtitle)}</p></div><div class="page-heading-actions"><button class="button button-secondary button-small" type="button" data-action="browse-all">Browse all projects</button></div></section>`}
     <div class="feed-layout"><section class="feed-main" aria-label="${escapeHtml(copy.title)}">
-      <div class="feed-heading"><div><h2>${escapeHtml(copy.title)}</h2><p>${escapeHtml(copy.subtitle)}</p></div><div class="feed-heading-actions"><span class="feed-count">${list.length} ${list.length === 1 ? "project" : "projects"}</span><label class="sort-control"><span>Sort</span><select id="sort-select" aria-label="Sort projects"><option value="suggested" ${state.sort === "suggested" ? "selected" : ""}>Suggested</option><option value="recent" ${state.sort === "recent" ? "selected" : ""}>Recently updated</option><option value="oldest" ${state.sort === "oldest" ? "selected" : ""}>Oldest update</option><option value="start" ${state.sort === "start" ? "selected" : ""}>Recently started</option><option value="az" ${state.sort === "az" ? "selected" : ""}>Project name</option><option value="progress" ${state.sort === "progress" ? "selected" : ""}>Progress</option></select></label></div></div>
+      <div class="feed-heading"><div><h2>${escapeHtml(copy.title)}</h2><p>${escapeHtml(copy.subtitle)}</p></div><div class="feed-heading-actions"><span class="feed-count">${list.length} ${list.length === 1 ? "project" : "projects"}</span><label class="sort-control"><span>Sort</span><select id="sort-select" aria-label="Sort projects">${availableSorts(state).map(option => `<option value="${option}" ${effectiveSort(state) === option ? "selected" : ""}>${SORT_LABELS[option]}</option>`).join("")}</select></label></div></div>
       ${activeFilterChips()}${projectMarkup}
     </section>${renderRightRail()}</div>
   </div>`;
@@ -350,22 +353,18 @@ function renderApp() {
     }));
   }
 }
-function setView(view) {
+function setView(view, sort = "auto") {
   state.view = view;
+  state.sort = sort;
   state.search = "";
   elements.search.value = "";
   closePopovers();
   renderApp();
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
-function goHome() {
-  state.sort = "suggested";
-  setView("feed");
-}
 function browseAll() {
   resetFilters();
-  state.sort = "recent";
-  setView("feed");
+  setView("feed", "recent");
 }
 function toggleBookmark(projectId) {
   if (state.bookmarks.has(projectId)) {
@@ -462,6 +461,7 @@ function requestLocation() {
   navigator.geolocation.getCurrentPosition(position => {
     state.locationCoords = { latitude: position.coords.latitude, longitude: position.coords.longitude };
     state.locationEnabled = true;
+    state.sort = "auto";
     const closest = [...states].sort((a, b) => {
       const projectA = projects.find(project => project.state === a.name);
       const projectB = projects.find(project => project.state === b.name);
@@ -547,7 +547,7 @@ document.addEventListener("click", event => {
   if (filterTrigger) { togglePopover(elements.filterPanel, elements.filterTrigger); return; }
   if (notificationTrigger) { renderNotifications(); togglePopover(elements.notificationPanel, elements.notificationTrigger); return; }
   if (profileTrigger) { elements.profilePanel.innerHTML = renderProfilePanel(); localizeDOM(elements.profilePanel, state.language); togglePopover(elements.profilePanel, elements.profileTrigger); return; }
-  if (dataView) { if (dataView.dataset.view === "feed") goHome(); else setView(dataView.dataset.view); return; }
+  if (dataView) { setView(dataView.dataset.view); return; }
   if (openProjectButton) {
     const notificationId = openProjectButton.dataset.notification;
     if (notificationId) { state.readNotifications.add(notificationId); safeWrite(STORAGE.readNotifications, [...state.readNotifications]); renderNotifications(); }
@@ -562,7 +562,7 @@ document.addEventListener("click", event => {
 
   if (actionButton) {
     const action = actionButton.dataset.action;
-    if (action === "home") { goHome(); return; }
+    if (action === "home") { setView("feed"); return; }
     if (action === "close-filters") { elements.filterPanel.hidden = true; elements.filterTrigger.setAttribute("aria-expanded", "false"); return; }
     if (action === "reset-filters") { resetFilters(); closePopovers(); return; }
     if (action === "browse-all") { browseAll(); return; }
