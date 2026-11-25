@@ -33,6 +33,11 @@ export function orderDistricts(districts, projectDistricts) {
 export const cleanIdList = (value, validIds) => Array.isArray(value) ? [...new Set(value.filter(id => validIds.includes(id)))] : [];
 export const cleanUser = value => typeof value?.name === "string" && typeof value?.email === "string" ? { name: value.name, email: value.email } : null;
 
+// A project's updates, newest first. The translated text belongs to the first update in the data, so it stays with it.
+export function updatesNewestFirst(project, translatedText) {
+  return project.updates.map((update, index) => ({ date: update.date, text: index === 0 && translatedText ? translatedText : update.text })).sort((a, b) => b.date.localeCompare(a.date));
+}
+
 const BASE_SORTS = ["recent", "oldest", "start", "az", "progress"];
 
 // Sort options that make sense on the current screen. The first one is its default.

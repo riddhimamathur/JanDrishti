@@ -1,5 +1,6 @@
 import { projects as defaultProjects, states, districtsByState } from "./data.js";
 import { localizedProjectContent } from "./i18n.js";
+import { updatesNewestFirst } from "./logic.js";
 
 const COPY = {
   en: {
@@ -140,9 +141,9 @@ function renderProjectAnswer(message, language, copy, sourceProjects) {
   const matched = (message.projectIds || []).map(id => sourceProjects.find(project => project.id === id)).filter(Boolean);
   if (!matched.length) return `<p class="fp-no-match">${message.emptyPlace ? copy.noPlace : copy.noMatch}</p>`;
   return `<p class="fp-result-intro">${copy.resultIntro}</p>${matched.map(project => {
-    const update = project.updates.slice().sort((a, b) => b.date.localeCompare(a.date))[0];
     const content = localizedProjectContent(project, language);
-    return `<article class="fp-project-result"><div class="fp-project-result-top"><h3>${escapeHtml(project.title)}</h3><span class="fp-status-pill">${escapeHtml(statusLabel(project, copy))}</span></div><p class="fp-project-location">${escapeHtml(project.location)}</p><div class="fp-project-facts"><div><span>${copy.department}</span><strong>${escapeHtml(project.department)}</strong></div><div><span>${copy.completion}</span><strong>${formatDate(project.completion, language)}</strong></div><div><span>${copy.started}</span><strong>${formatDate(project.startDate, language)}</strong></div><div><span>${copy.budget}</span><strong>${escapeHtml(project.budget)}</strong></div><div><span>${copy.progress}</span><strong>${project.progress}%</strong></div></div><p class="fp-project-description">${escapeHtml(content.description)}</p>${update ? `<p class="fp-project-update"><strong>${copy.latest} · ${formatDate(update.date, language)}:</strong> ${escapeHtml(content.latestUpdate)}</p>` : ""}<button class="fp-open-project" type="button" data-assistant-project="${escapeHtml(project.id)}">${copy.openDetails}<span aria-hidden="true">↗</span></button></article>`;
+    const update = updatesNewestFirst(project, content.latestUpdate)[0];
+    return `<article class="fp-project-result"><div class="fp-project-result-top"><h3>${escapeHtml(project.title)}</h3><span class="fp-status-pill">${escapeHtml(statusLabel(project, copy))}</span></div><p class="fp-project-location">${escapeHtml(project.location)}</p><div class="fp-project-facts"><div><span>${copy.department}</span><strong>${escapeHtml(project.department)}</strong></div><div><span>${copy.completion}</span><strong>${formatDate(project.completion, language)}</strong></div><div><span>${copy.started}</span><strong>${formatDate(project.startDate, language)}</strong></div><div><span>${copy.budget}</span><strong>${escapeHtml(project.budget)}</strong></div><div><span>${copy.progress}</span><strong>${project.progress}%</strong></div></div><p class="fp-project-description">${escapeHtml(content.description)}</p>${update ? `<p class="fp-project-update"><strong>${copy.latest} · ${formatDate(update.date, language)}:</strong> ${escapeHtml(update.text)}</p>` : ""}<button class="fp-open-project" type="button" data-assistant-project="${escapeHtml(project.id)}">${copy.openDetails}<span aria-hidden="true">↗</span></button></article>`;
   }).join("")}`;
 }
 function renderMessage(message, language, copy, sourceProjects) {
