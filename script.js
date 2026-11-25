@@ -1,7 +1,7 @@
 import { projects, states, districtsByState, translations, notifications } from "./data.js";
 import { initializeAssistant } from "./assistant.js";
 import { localizeDOM, localizedProjectContent } from "./i18n.js";
-import { sortNewest, distanceKm, selectProjects, countResults, isSuggestedHome, availableSorts, effectiveSort, orderDistricts } from "./logic.js";
+import { sortNewest, distanceKm, selectProjects, countResults, isSuggestedHome, availableSorts, effectiveSort, orderDistricts, cleanIdList, cleanUser } from "./logic.js";
 
 const STORAGE = {
   bookmarks: "jandrishti.bookmarks",
@@ -30,12 +30,12 @@ const state = {
   filters: { department: "", state: "", district: "", startDate: "" },
   filtersFromMap: false, // set by a map district click; such filters are dropped on Home
   sort: "auto",
-  language: safeRead(STORAGE.language, "en"),
-  theme: safeRead(STORAGE.theme, "light"),
-  bookmarks: new Set(safeRead(STORAGE.bookmarks, [])),
-  history: safeRead(STORAGE.history, []),
-  user: safeRead(STORAGE.user, null),
-  readNotifications: new Set(safeRead(STORAGE.readNotifications, [])),
+  language: savedLanguage(),
+  theme: safeRead(STORAGE.theme, "light") === "dark" ? "dark" : "light",
+  bookmarks: new Set(cleanIdList(safeRead(STORAGE.bookmarks, []), projects.map(project => project.id))),
+  history: cleanIdList(safeRead(STORAGE.history, []), projects.map(project => project.id)),
+  user: cleanUser(safeRead(STORAGE.user, null)),
+  readNotifications: new Set(cleanIdList(safeRead(STORAGE.readNotifications, []), notifications.map(item => item.id))),
   locationEnabled: false,
   locationCoords: null,
   fallbackOrder: loadFallbackOrder()
@@ -75,6 +75,10 @@ function safeRead(key, fallback) {
 }
 function safeWrite(key, value) {
   try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* Private browsing may disable storage. */ }
+}
+function savedLanguage() {
+  const value = safeRead(STORAGE.language, "en");
+  return Object.hasOwn(translations, value) ? value : "en";
 }
 function loadFallbackOrder() {
   const ids = projects.filter(project => project.status === "ongoing").map(project => project.id);

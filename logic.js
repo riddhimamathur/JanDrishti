@@ -29,6 +29,10 @@ export function orderDistricts(districts, projectDistricts) {
   return [...new Set([...districts, ...wanted])].sort((a, b) => wanted.has(b) - wanted.has(a) || a.localeCompare(b));
 }
 
+// Saved browser data can be missing, old or edited by hand, so every value is checked before use.
+export const cleanIdList = (value, validIds) => Array.isArray(value) ? [...new Set(value.filter(id => validIds.includes(id)))] : [];
+export const cleanUser = value => typeof value?.name === "string" && typeof value?.email === "string" ? { name: value.name, email: value.email } : null;
+
 const BASE_SORTS = ["recent", "oldest", "start", "az", "progress"];
 
 // Sort options that make sense on the current screen. The first one is its default.
