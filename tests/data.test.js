@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { projects, notifications } from "../data.js";
-import { cleanIdList, cleanUser, updatesNewestFirst } from "../logic.js";
+import { cleanIdList, cleanUser, updatesNewestFirst, nearestProject } from "../logic.js";
 
 test("B22: wrong saved values fall back to safe ones", () => {
   for (const bad of [5, "abc", null, {}, true]) assert.deepEqual(cleanIdList(bad, ["a"]), []);
@@ -19,4 +19,7 @@ test("B24: notifications carry real dates and no wording that goes stale", () =>
   for (const item of notifications) assert.ok(!Number.isNaN(Date.parse(item.at)), item.id);
   const source = ["data.js", "script.js"].map(file => readFileSync(new URL(`../${file}`, import.meta.url), "utf8")).join("");
   assert.doesNotMatch(source, /when: "(Today|Yesterday)|New this month/);
+});
+test("B21: the closest project is chosen from all projects", () => {
+  for (const project of projects) assert.equal(nearestProject({ latitude: project.lat, longitude: project.lng }, projects).id, project.id);
 });

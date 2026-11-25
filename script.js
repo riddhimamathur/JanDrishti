@@ -1,7 +1,7 @@
 import { projects, states, districtsByState, translations, notifications } from "./data.js";
 import { initializeAssistant } from "./assistant.js";
 import { localizeDOM, localizedProjectContent } from "./i18n.js";
-import { sortNewest, distanceKm, selectProjects, countResults, isSuggestedHome, availableSorts, effectiveSort, orderDistricts, cleanIdList, cleanUser, updatesNewestFirst } from "./logic.js";
+import { sortNewest, distanceKm, selectProjects, countResults, isSuggestedHome, availableSorts, effectiveSort, orderDistricts, cleanIdList, cleanUser, updatesNewestFirst, nearestProject } from "./logic.js";
 
 const STORAGE = {
   bookmarks: "jandrishti.bookmarks",
@@ -163,8 +163,7 @@ function applyLanguage() {
 function updateActiveNav() {
   document.querySelectorAll("[data-view]").forEach(button => {
     const view = button.dataset.view;
-    const active = (view === "feed" && ["feed", "history", "saved", "updates"].includes(state.view)) ? state.view === "feed" : view === state.view;
-    button.classList.toggle("is-active", active);
+    button.classList.toggle("is-active", view === state.view);
   });
 }
 function currentProjects() { return selectProjects(projects, state); }
@@ -488,14 +487,8 @@ function requestLocation() {
     state.locationCoords = { latitude: position.coords.latitude, longitude: position.coords.longitude };
     state.locationEnabled = true;
     state.sort = "auto";
-    const closest = [...states].sort((a, b) => {
-      const projectA = projects.find(project => project.state === a.name);
-      const projectB = projects.find(project => project.state === b.name);
-      if (!projectA) return 1;
-      if (!projectB) return -1;
-      return distanceFromLocation(projectA) - distanceFromLocation(projectB);
-    }).find(item => projects.some(project => project.state === item.name));
-    showToast(`Nearby sorting enabled. Closest sample projects are in ${closest?.name || "India"}.`);
+    const closest = nearestProject(state.locationCoords, projects).state;
+    showToast(`Nearby sorting enabled. Closest sample projects are in ${closest}.`);
     renderApp();
     refreshSettings();
   }, error => {
