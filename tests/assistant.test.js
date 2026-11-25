@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { findProjectsForQuestion } from "../assistant.js";
+import { findProjectsForQuestion, asksAboutEmptyPlace } from "../assistant.js";
 
 const answer = (question, language = "en") => findProjectsForQuestion(question, language).map(project => project.id);
 
@@ -38,6 +38,10 @@ test("places are found by other spellings and Indian-language state names", () =
   assert.deepEqual(answer("ગુજરાત", "gu"), ["ahmedabad-water-reuse"]);
   assert.deepEqual(answer("राजस्थान", "hi").length, 3);
 });
-test("B14: a state without projects gives no results", { todo: "fixed in P2.3" }, () => {
-  assert.deepEqual(answer("projects in Kerala"), []);
+test("B14: a place without projects gives no results and says why", () => {
+  for (const question of ["projects in Kerala", "New Delhi", "What is happening in Jodhpur?"]) {
+    assert.deepEqual(answer(question), [], question);
+    assert.equal(asksAboutEmptyPlace(question), true, question);
+  }
+  for (const question of ["Jaipur and Kerala", "new projects", "hello"]) assert.equal(asksAboutEmptyPlace(question), false, question);
 });
