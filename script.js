@@ -445,7 +445,11 @@ function renderNotifications() {
   localizeDOM(elements.notificationPanel, state.language);
 }
 function openSettings() {
-  showModal(`<span class="modal-eyebrow">PREFERENCES · THIS DEVICE</span><h2 class="modal-title">Settings</h2><p class="modal-intro">A few controls to make this civic dashboard more comfortable to use.</p><div class="settings-choice"><span><strong>Dark theme</strong><small>Switch between the light civic theme and a low-light palette.</small></span><button class="theme-toggle" type="button" role="switch" aria-label="Dark theme" aria-checked="${state.theme === "dark"}" data-action="toggle-theme"></button></div><div class="settings-choice"><span><strong>Nearby project feed</strong><small>Use your device location only when you choose. Coordinates stay in this tab.</small></span><button class="button button-secondary button-small" type="button" data-action="location">${state.locationEnabled ? "Turn off" : "Use location"}</button></div><div class="settings-choice"><span><strong>Feedback</strong><small>Share a suggestion about making public projects easier to understand.</small></span><button class="button button-secondary button-small" type="button" data-action="feedback">Send feedback</button></div><div class="settings-choice"><span><strong>Report a bug</strong><small>Describe a display issue or something that is not working in this demo.</small></span><button class="button button-secondary button-small" type="button" data-action="bug-report">Report issue</button></div><div class="modal-action-row"><span class="theme-preview"><i></i> Civic trust theme</span><button class="button button-primary button-small" type="button" data-modal-close>Done</button></div>`);
+  showModal(`<span class="modal-eyebrow">PREFERENCES · THIS DEVICE</span><h2 class="modal-title">Settings</h2><p class="modal-intro" data-settings>A few controls to make this civic dashboard more comfortable to use.</p><div class="settings-choice"><span><strong>Dark theme</strong><small>Switch between the light civic theme and a low-light palette.</small></span><button class="theme-toggle" type="button" role="switch" aria-label="Dark theme" aria-checked="${state.theme === "dark"}" data-action="toggle-theme"></button></div><div class="settings-choice"><span><strong>Nearby project feed</strong><small>Use your device location only when you choose. Coordinates stay in this tab.</small></span><button class="button button-secondary button-small" type="button" data-action="location">${state.locationEnabled ? "Turn off" : "Use location"}</button></div><div class="settings-choice"><span><strong>Feedback</strong><small>Share a suggestion about making public projects easier to understand.</small></span><button class="button button-secondary button-small" type="button" data-action="feedback">Send feedback</button></div><div class="settings-choice"><span><strong>Report a bug</strong><small>Describe a display issue or something that is not working in this demo.</small></span><button class="button button-secondary button-small" type="button" data-action="bug-report">Report issue</button></div><div class="modal-action-row"><span class="theme-preview"><i></i> Civic trust theme</span><button class="button button-primary button-small" type="button" data-modal-close>Done</button></div>`);
+}
+// Redraws Settings only if it is the popup on screen, so no other popup is replaced.
+function refreshSettings() {
+  if (elements.modalRoot.querySelector("[data-settings]")) openSettings();
 }
 function openFeedback(type) {
   const bug = type === "bug";
@@ -458,7 +462,7 @@ function requestLocation() {
     state.locationCoords = null;
     showToast("Nearby sorting turned off. Showing latest projects across India.");
     renderApp();
-    if (elements.modalRoot.innerHTML) openSettings();
+    refreshSettings();
     return;
   }
   if (!navigator.geolocation) {
@@ -479,7 +483,7 @@ function requestLocation() {
     }).find(item => projects.some(project => project.state === item.name));
     showToast(`Nearby sorting enabled. Closest sample projects are in ${closest?.name || "India"}.`);
     renderApp();
-    if (elements.modalRoot.innerHTML) openSettings();
+    refreshSettings();
   }, error => {
     const message = error.code === 1 ? "Location permission was not granted. Showing latest projects across India." : "Could not get your location. Showing latest projects across India.";
     showToast(message);
