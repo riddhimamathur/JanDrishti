@@ -53,6 +53,12 @@ function copyFor(language) { return COPY[language] || COPY.en; }
 function normalize(value = "") {
   return String(value).normalize("NFKC").toLocaleLowerCase().replace(/[^\p{L}\p{M}\p{N}\s-]/gu, " ").replace(/\s+/g, " ").trim();
 }
+// English words must match whole words. Indian-language words only need to start a word, because endings attach to them.
+function hasTerm(query, term) {
+  const wanted = normalize(term);
+  const wholeWord = /^[a-z0-9 -]+$/.test(wanted);
+  return ` ${query} `.includes(wholeWord ? ` ${wanted} ` : ` ${wanted}`);
+}
 function safeReadMessages() {
   try {
     const messages = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
@@ -70,7 +76,7 @@ function newestFirst(a, b) { return b.updatedAt.localeCompare(a.updatedAt); }
 export function findProjectsForQuestion(question, language = "en", sourceProjects = defaultProjects) {
   const query = normalize(question);
   if (!query) return [];
-  const status = Object.entries(STATUS_TERMS).find(([, terms]) => terms.some(term => query.includes(normalize(term))))?.[0];
+  const status = Object.entries(STATUS_TERMS).find(([, terms]) => terms.some(term => hasTerm(query, term)))?.[0];
   const candidates = status ? sourceProjects.filter(project => project.status === status) : sourceProjects;
   const words = query.split(" ").filter(word => word.length > 2 && !GENERIC_TERMS.has(word));
   const ranked = candidates.map(project => {

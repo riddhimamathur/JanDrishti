@@ -25,7 +25,7 @@ for (const [language, questions] of examples) {
   });
 }
 
-test("B4: status words inside other words are ignored", { todo: "fixed in P2.1" }, () => {
+test("B4: status words inside other words are ignored", () => {
   assert.equal(answer("any news about Jaipur?")[0], "raja-park-road");
   assert.equal(answer("Raja Park to Malviya Nagar road renewal")[0], "raja-park-road");
   assert.equal(answer("Show the extended Ahmedabad work")[0], "ahmedabad-water-reuse");
