@@ -1,6 +1,7 @@
 import { projects, states, districtsByState, translations, notifications } from "./data.js";
 import { initializeAssistant } from "./assistant.js";
 import { localizeDOM, localizedProjectContent } from "./i18n.js";
+import { sortNewest, distanceKm, selectProjects, countResults, isSuggestedHome, availableSorts, effectiveSort } from "./logic.js";
 
 const STORAGE = {
   bookmarks: "jandrishti.bookmarks",
@@ -11,6 +12,7 @@ const STORAGE = {
   readNotifications: "jandrishti.readNotifications"
 };
 const localeByLanguage = { en: "en-IN", hi: "hi-IN", gu: "gu-IN", mr: "mr-IN", or: "or-IN", bn: "bn-IN", te: "te-IN", kn: "kn-IN" };
+const SORT_LABELS = { suggested: "Suggested", nearest: "Nearest", viewed: "Recently viewed", recent: "Recently updated", oldest: "Oldest update", start: "Recently started", az: "Project name", progress: "Progress" };
 const markerPositions = [
   { name: "Rajasthan", x: 202, y: 187 }, { name: "Gujarat", x: 156, y: 255 },
   { name: "Maharashtra", x: 227, y: 297 }, { name: "Karnataka", x: 246, y: 374 },
@@ -25,7 +27,8 @@ const state = {
   mapDistrict: "",
   search: "",
   filters: { department: "", state: "", district: "", startDate: "" },
-  sort: "recent",
+  filtersFromMap: false, // set by a map district click; such filters are dropped on Home
+  sort: "auto",
   language: safeRead(STORAGE.language, "en"),
   theme: safeRead(STORAGE.theme, "light"),
   bookmarks: new Set(safeRead(STORAGE.bookmarks, [])),
@@ -97,7 +100,6 @@ function formatDate(value, options = { day: "numeric", month: "short", year: "nu
   return new Intl.DateTimeFormat(locale(), options).format(date);
 }
 function formatShortDate(value) { return formatDate(value, { day: "numeric", month: "short" }); }
-function sortNewest(a, b) { return b.updatedAt.localeCompare(a.updatedAt); }
 function statusLabel(status) {
   if (status === "new") return state.language === "en" ? "New this month" : `${t("newProjects")}`;
   if (status === "ended") return t("ended");
@@ -160,45 +162,14 @@ function updateActiveNav() {
     button.classList.toggle("is-active", active);
   });
 }
-function matchesFilters(project) {
-  const term = state.search.trim().toLowerCase();
-  const matchesSearch = !term || [project.title, project.department, project.location, project.state, project.district, project.description].some(value => value.toLowerCase().includes(term));
-  const f = state.filters;
-  return matchesSearch && (!f.department || project.department === f.department) && (!f.state || project.state === f.state) && (!f.district || project.district === f.district) && (!f.startDate || project.startDate >= f.startDate);
-}
-function currentProjects() {
-  let list = [...projects].filter(matchesFilters);
-  if (state.view === "saved") list = list.filter(project => state.bookmarks.has(project.id));
-  if (state.view === "history") list = list.filter(project => state.history.includes(project.id)).sort((a, b) => state.history.indexOf(a.id) - state.history.indexOf(b.id));
-  if (state.view === "updates") list = list.sort(sortNewest);
-  else if (state.view === "feed") {
-    if (state.locationCoords && state.locationEnabled) list = list.sort((a, b) => distanceFromLocation(a) - distanceFromLocation(b));
-    else {
-      const positions = new Map(state.fallbackOrder.map((id, index) => [id, index]));
-      list = list.filter(project => project.status === "ongoing").sort((a, b) => (positions.get(a.id) ?? Infinity) - (positions.get(b.id) ?? Infinity));
-    }
-  }
-  if (state.sort === "oldest") list.reverse();
-  if (state.sort === "start") list.sort((a, b) => b.startDate.localeCompare(a.startDate));
-  if (state.sort === "az") list.sort((a, b) => a.title.localeCompare(b.title));
-  if (state.sort === "progress") list.sort((a, b) => b.progress - a.progress);
-  return list;
-}
-function distanceFromLocation(project) {
-  if (!state.locationCoords) return 0;
-  const radians = number => number * Math.PI / 180;
-  const lat1 = radians(state.locationCoords.latitude), lat2 = radians(project.lat);
-  const dLat = lat2 - lat1, dLng = radians(project.lng - state.locationCoords.longitude);
-  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
-  return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-function filteredProjectsWithoutView() { return projects.filter(matchesFilters); }
+function currentProjects() { return selectProjects(projects, state); }
+function distanceFromLocation(project) { return distanceKm(state.locationCoords, project); }
 function filterCount() { return Object.values(state.filters).filter(Boolean).length; }
 function updateFilterBadge() {
   const count = filterCount();
   elements.filterCount.hidden = count === 0;
   elements.filterCount.textContent = String(count);
-  elements.filterResultCount.textContent = String(filteredProjectsWithoutView().length);
+  elements.filterResultCount.textContent = String(countResults(projects, state));
 }
 function showToast(message) {
   const toast = document.createElement("div");
@@ -287,7 +258,11 @@ function viewCopy() {
   if (state.view === "saved") return { title: "Starred projects", subtitle: "A quick list of the public works you want to keep an eye on.", emptyTitle: "Nothing starred yet", emptyDescription: "Tap the star on a project card to keep it close." };
   if (state.view === "history") return { title: t("history"), subtitle: "Projects you have opened recently on this device.", emptyTitle: "Your view history starts here", emptyDescription: "Open any project to add it to your recently checked list." };
   if (state.view === "updates") return { title: "Project updates", subtitle: "The latest progress notes from the sample projects in JanDrishti.", emptyTitle: "No matching updates", emptyDescription: "Try a broader search or reset your filters." };
-  return { title: t("latest"), subtitle: state.locationEnabled ? "Updates are ordered by distance from your selected location." : "Latest updates from sample projects across India.", emptyTitle: t("noResults"), emptyDescription: "Adjust your search or filters to see more public projects." };
+  const empty = { emptyTitle: t("noResults"), emptyDescription: "Adjust your search or filters to see more public projects." };
+  if (isSuggestedHome(state)) return { title: "Suggested projects", subtitle: "A mix of ongoing sample projects. Search, filter or sort to look through all of them.", ...empty };
+  const sort = effectiveSort(state);
+  const subtitle = sort === "nearest" ? "Updates are ordered by distance from your selected location." : sort === "recent" ? "Latest updates from sample projects across India." : "Sample projects in your chosen order.";
+  return { title: t("latest"), subtitle, ...empty };
 }
 function renderFeed() {
   const list = currentProjects();
@@ -297,9 +272,9 @@ function renderFeed() {
   const isCollectionView = state.view === "saved" || state.view === "history";
   const projectMarkup = list.length ? `<div class="project-list">${list.map(renderProjectCard).join("")}</div>` : emptyState(copy.emptyTitle, copy.emptyDescription, isCollectionView ? "Browse all projects" : t("reset"), isCollectionView ? "browse-all" : "reset-filters");
   return `<div class="main-content">
-    ${shouldShowHero ? `<section class="hero"><div class="hero-copy"><div class="hero-kicker"><i class="status-pulse"></i><span>CITIZEN PROJECT TRACKER · SAMPLE VIEW</span></div><h1>A clearer view of public work.</h1><p>Follow the projects shaping everyday life—from a road near your home to the water system your city depends on.</p></div><div class="hero-actions"><button class="button button-primary" type="button" data-action="location">${locationIcon()}<span>${state.locationEnabled ? "Location enabled" : t("location")}</span></button><span class="hero-location-note">${state.locationEnabled ? "Showing nearby sample projects" : "Browse updates from across India"}</span></div></section>` : `<section class="page-heading"><div><span class="eyebrow">JAN DRISHTI · CITIZEN PROJECT TRACKER</span><h1>${escapeHtml(copy.title)}</h1><p>${escapeHtml(copy.subtitle)}</p></div><div class="page-heading-actions"><button class="button button-secondary button-small" type="button" data-view="feed">Browse all projects</button></div></section>`}
+    ${shouldShowHero ? `<section class="hero"><div class="hero-copy"><div class="hero-kicker"><i class="status-pulse"></i><span>CITIZEN PROJECT TRACKER · SAMPLE VIEW</span></div><h1>A clearer view of public work.</h1><p>Follow the projects shaping everyday life—from a road near your home to the water system your city depends on.</p></div><div class="hero-actions"><button class="button button-primary" type="button" data-action="location">${locationIcon()}<span>${state.locationEnabled ? "Location enabled" : t("location")}</span></button><span class="hero-location-note">${state.locationEnabled ? "Showing nearby sample projects" : "Browse updates from across India"}</span></div></section>` : `<section class="page-heading"><div><span class="eyebrow">JAN DRISHTI · CITIZEN PROJECT TRACKER</span><h1>${escapeHtml(copy.title)}</h1><p>${escapeHtml(copy.subtitle)}</p></div><div class="page-heading-actions"><button class="button button-secondary button-small" type="button" data-action="browse-all">Browse all projects</button></div></section>`}
     <div class="feed-layout"><section class="feed-main" aria-label="${escapeHtml(copy.title)}">
-      <div class="feed-heading"><div><h2>${escapeHtml(copy.title)}</h2><p>${escapeHtml(copy.subtitle)}</p></div><div class="feed-heading-actions"><span class="feed-count">${list.length} ${list.length === 1 ? "project" : "projects"}</span><label class="sort-control"><span>Sort</span><select id="sort-select" aria-label="Sort projects"><option value="recent" ${state.sort === "recent" ? "selected" : ""}>Recently updated</option><option value="oldest" ${state.sort === "oldest" ? "selected" : ""}>Oldest update</option><option value="start" ${state.sort === "start" ? "selected" : ""}>Recently started</option><option value="az" ${state.sort === "az" ? "selected" : ""}>Project name</option><option value="progress" ${state.sort === "progress" ? "selected" : ""}>Progress</option></select></label></div></div>
+      <div class="feed-heading"><div><h2>${escapeHtml(copy.title)}</h2><p>${escapeHtml(copy.subtitle)}</p></div><div class="feed-heading-actions"><span class="feed-count">${list.length} ${list.length === 1 ? "project" : "projects"}</span><label class="sort-control"><span>Sort</span><select id="sort-select" aria-label="Sort projects">${availableSorts(state).map(option => `<option value="${option}" ${effectiveSort(state) === option ? "selected" : ""}>${SORT_LABELS[option]}</option>`).join("")}</select></label></div></div>
       ${activeFilterChips()}${projectMarkup}
     </section>${renderRightRail()}</div>
   </div>`;
@@ -372,6 +347,7 @@ function renderApp() {
       if (stateProjects(state.mapState).some(project => project.district === district)) {
         state.filters.state = state.mapState;
         state.filters.district = district;
+        state.filtersFromMap = true;
         state.view = "feed";
         updateFilterOptions();
         renderApp();
@@ -379,13 +355,25 @@ function renderApp() {
     }));
   }
 }
-function setView(view) {
+function setView(view, sort = "auto") {
   state.view = view;
+  state.sort = sort;
+  if (view === "feed" && state.filtersFromMap) {
+    state.filtersFromMap = false;
+    state.mapDistrict = "";
+    state.filters.state = "";
+    state.filters.district = "";
+    updateFilterOptions();
+  }
   state.search = "";
   elements.search.value = "";
   closePopovers();
   renderApp();
   window.scrollTo({ top: 0, behavior: "smooth" });
+}
+function browseAll() {
+  resetFilters();
+  setView("feed", "recent");
 }
 function toggleBookmark(projectId) {
   if (state.bookmarks.has(projectId)) {
@@ -482,6 +470,7 @@ function requestLocation() {
   navigator.geolocation.getCurrentPosition(position => {
     state.locationCoords = { latitude: position.coords.latitude, longitude: position.coords.longitude };
     state.locationEnabled = true;
+    state.sort = "auto";
     const closest = [...states].sort((a, b) => {
       const projectA = projects.find(project => project.state === a.name);
       const projectB = projects.find(project => project.state === b.name);
@@ -517,11 +506,13 @@ function togglePopover(panel, trigger) {
   }
 }
 function clearFilter(key) {
+  state.filtersFromMap = false;
   state.filters[key] = "";
   updateFilterOptions();
   renderApp();
 }
 function resetFilters() {
+  state.filtersFromMap = false;
   state.filters = { department: "", state: "", district: "", startDate: "" };
   state.search = "";
   elements.search.value = "";
@@ -585,8 +576,8 @@ document.addEventListener("click", event => {
     if (action === "home") { setView("feed"); return; }
     if (action === "close-filters") { elements.filterPanel.hidden = true; elements.filterTrigger.setAttribute("aria-expanded", "false"); return; }
     if (action === "reset-filters") { resetFilters(); closePopovers(); return; }
-    if (action === "browse-all") { resetFilters(); setView("feed"); return; }
-    if (action === "apply-filters") { state.filters = { department: elements.department.value, state: elements.stateFilter.value, district: elements.district.value, startDate: elements.startDate.value }; closePopovers(); renderApp(); showToast("Project filters applied."); return; }
+    if (action === "browse-all") { browseAll(); return; }
+    if (action === "apply-filters") { state.filtersFromMap = false; state.filters = { department: elements.department.value, state: elements.stateFilter.value, district: elements.district.value, startDate: elements.startDate.value }; if (state.view === "map") state.view = "feed"; closePopovers(); renderApp(); showToast("Project filters applied."); return; }
     if (action === "settings") { openSettings(); return; }
     if (action === "auth") { closePopovers(); openAuth("signin"); return; }
     if (action === "signup") { closePopovers(); openAuth("signup"); return; }
@@ -626,11 +617,13 @@ document.addEventListener("change", event => {
     safeWrite(STORAGE.language, state.language);
     applyLanguage();
   } else if (event.target === elements.stateFilter) {
+    state.filtersFromMap = false;
     state.filters.state = elements.stateFilter.value;
     state.filters.district = "";
     updateFilterOptions();
     renderApp();
   } else if ([elements.department, elements.district, elements.startDate].includes(event.target)) {
+    state.filtersFromMap = false;
     state.filters.department = elements.department.value;
     state.filters.district = elements.district.value;
     state.filters.startDate = elements.startDate.value;

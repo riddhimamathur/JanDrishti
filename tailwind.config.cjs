@@ -1,5 +1,5 @@
 module.exports = {
-  content: ["./index.html", "./script.js", "./assistant.js", "./data.js", "./i18n.js"],
+  content: ["./index.html", "./script.js", "./logic.js", "./assistant.js", "./data.js", "./i18n.js"],
   theme: {
     extend: {
       colors: {
