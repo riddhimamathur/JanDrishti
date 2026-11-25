@@ -469,7 +469,7 @@ function refreshSettings() {
 function openFeedback(type) {
   const bug = type === "bug";
   const title = bug ? "Report a bug" : "Share feedback";
-  showModal(`<span class="modal-eyebrow">${bug ? "REPORT AN ISSUE" : "HELP US IMPROVE"}</span><h2 class="modal-title">${title}</h2><p class="modal-intro">This is a local demo form. Nothing is sent to a server.</p><form class="modal-form" id="feedback-form" data-type="${bug ? "bug" : "feedback"}"><div class="form-group"><label for="feedback-category">${bug ? "Where did you notice it?" : "What is your suggestion about?"}</label><select id="feedback-category" required><option value="">Choose a topic</option><option>Project information</option><option>Maps and locations</option><option>Accessibility</option><option>Search and filters</option><option>Something else</option></select></div><div class="form-group"><label for="feedback-message">${bug ? "What happened?" : "Your feedback"}</label><textarea id="feedback-message" required minlength="8" placeholder="A few details help us understand…"></textarea></div><button class="button button-primary" type="submit">${bug ? "Save demo report" : "Save demo feedback"}</button></form>`);
+  showModal(`<span class="modal-eyebrow">${bug ? "REPORT AN ISSUE" : "HELP US IMPROVE"}</span><h2 class="modal-title">${title}</h2><p class="modal-intro">This is a local demo form. Nothing is sent to a server.</p><p class="form-note">This demo does not keep your message.</p><form class="modal-form" id="feedback-form" data-type="${bug ? "bug" : "feedback"}"><div class="form-group"><label for="feedback-category">${bug ? "Where did you notice it?" : "What is your suggestion about?"}</label><select id="feedback-category" required><option value="">Choose a topic</option><option>Project information</option><option>Maps and locations</option><option>Accessibility</option><option>Search and filters</option><option>Something else</option></select></div><div class="form-group"><label for="feedback-message">${bug ? "What happened?" : "Your feedback"}</label><textarea id="feedback-message" required minlength="8" placeholder="A few details help us understand…"></textarea></div><button class="button button-primary" type="submit">${bug ? "Submit demo report" : "Submit demo feedback"}</button></form>`);
 }
 function requestLocation() {
   if (state.locationEnabled) {
@@ -673,7 +673,7 @@ document.addEventListener("submit", event => {
     event.preventDefault();
     const bug = event.target.dataset.type === "bug";
     closeModal();
-    showToast(bug ? "Bug report saved in this demo. Nothing was sent." : "Feedback saved in this demo. Nothing was sent.");
+    showToast(bug ? "This demo does not keep your report. Nothing was saved or sent." : "This demo does not keep your feedback. Nothing was saved or sent.");
   }
 });
 
