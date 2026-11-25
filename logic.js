@@ -23,6 +23,12 @@ export function matchesFilters(project, search, filters) {
 
 const hasLocation = state => Boolean(state.locationEnabled && state.locationCoords);
 
+// Districts that have a project come first, so they are never cut off a shortened list.
+export function orderDistricts(districts, projectDistricts) {
+  const wanted = new Set(projectDistricts);
+  return [...new Set([...districts, ...wanted])].sort((a, b) => wanted.has(b) - wanted.has(a) || a.localeCompare(b));
+}
+
 const BASE_SORTS = ["recent", "oldest", "start", "az", "progress"];
 
 // Sort options that make sense on the current screen. The first one is its default.

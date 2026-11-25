@@ -1,7 +1,7 @@
 import { projects, states, districtsByState, translations, notifications } from "./data.js";
 import { initializeAssistant } from "./assistant.js";
 import { localizeDOM, localizedProjectContent } from "./i18n.js";
-import { sortNewest, distanceKm, selectProjects, countResults, isSuggestedHome, availableSorts, effectiveSort } from "./logic.js";
+import { sortNewest, distanceKm, selectProjects, countResults, isSuggestedHome, availableSorts, effectiveSort, orderDistricts } from "./logic.js";
 
 const STORAGE = {
   bookmarks: "jandrishti.bookmarks",
@@ -25,6 +25,7 @@ const state = {
   view: "feed",
   mapState: "",
   mapDistrict: "",
+  showAllDistricts: false,
   search: "",
   filters: { department: "", state: "", district: "", startDate: "" },
   filtersFromMap: false, // set by a map district click; such filters are dropped on Home
@@ -281,10 +282,7 @@ function renderFeed() {
 }
 function stateProjects(stateName) { return projects.filter(project => project.state === stateName); }
 function districtOptions(stateName) {
-  const districts = districtsByState[stateName] || [];
-  const projectDistricts = stateProjects(stateName).map(project => project.district);
-  const fallback = districts.length ? districts : projectDistricts;
-  return [...new Set([...fallback, ...projectDistricts])].sort((a, b) => a.localeCompare(b));
+  return orderDistricts(districtsByState[stateName] || [], stateProjects(stateName).map(project => project.district));
 }
 function mapSummary(projectList, title) {
   const counts = statsFor(projectList);
@@ -312,14 +310,15 @@ function renderStatePanel() {
   const selectedProjects = selected ? stateProjects(selected) : [...projects];
   const stats = statsFor(selectedProjects);
   const districts = selected ? districtOptions(selected) : ["Jaipur", "Chomu", "Bikaner", "Ahmedabad", "Pune", "Bengaluru Urban", "Kolkata", "Hyderabad"];
-  const visibleDistricts = districts.slice(0, selected ? 18 : 8);
+  const visibleDistricts = selected && state.showAllDistricts ? districts : districts.slice(0, selected ? 18 : 8);
   const localProjectList = selectedProjects.slice().sort(sortNewest).slice(0, 4);
   const title = selected || t("allIndia");
+  const marker = markerPositions.find(item => item.name === selected);
   return `<aside class="state-panel">
     <div class="state-panel-header"><div class="state-indicator"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6 9 3l6 3 6-3v15l-6 3-6-3-6 3V6Z"/><path d="M9 3v15m6-12v15"/></svg></div><div class="state-panel-header-copy"><span class="eyebrow">${selected ? "STATE PROJECT VIEW" : "JAN DRISHTI · ALL INDIA"}</span><h2>${escapeHtml(title)}</h2><p>${selected ? `${selectedProjects.length} sample ${selectedProjects.length === 1 ? "project" : "projects"} in this state` : "Select a state to explore local public works."}</p></div>${selected ? `<button class="icon-button quiet" type="button" data-action="clear-map-state" aria-label="Return to all India map">×</button>` : ""}</div>
-    <div class="map-project-map"><svg viewBox="90 30 380 485" aria-hidden="true"><path class="india-shape" d="M243 27 274 40 294 56 322 61 333 78 365 95 383 120 407 135 422 164 444 178 451 209 435 231 450 257 432 283 416 302 399 330 380 347 369 379 350 411 335 443 316 474 293 505 276 481 256 460 239 431 215 418 201 393 180 375 158 350 138 326 119 301 105 274 103 247 117 223 134 204 138 177 159 162 174 143 195 131 210 108 232 87 238 61Z"/><path class="state-line" d="M169 172 222 199 278 291M201 204l-11 62m48-51 27 93m38-86-30 57m-48 79 50-50m31-87 34-19m21 64 34-35"/>${selected ? `<circle class="map-project-pin" cx="${markerPositions.find(m => m.name === selected)?.x || 280}" cy="${markerPositions.find(m => m.name === selected)?.y || 250}" r="8"/>` : ""}</svg><span class="map-project-watermark">Illustrative map · not to scale</span></div>
+    <div class="map-project-map"><svg viewBox="90 30 380 485" aria-hidden="true"><path class="india-shape" d="M243 27 274 40 294 56 322 61 333 78 365 95 383 120 407 135 422 164 444 178 451 209 435 231 450 257 432 283 416 302 399 330 380 347 369 379 350 411 335 443 316 474 293 505 276 481 256 460 239 431 215 418 201 393 180 375 158 350 138 326 119 301 105 274 103 247 117 223 134 204 138 177 159 162 174 143 195 131 210 108 232 87 238 61Z"/><path class="state-line" d="M169 172 222 199 278 291M201 204l-11 62m48-51 27 93m38-86-30 57m-48 79 50-50m31-87 34-19m21 64 34-35"/>${marker ? `<circle class="map-project-pin" cx="${marker.x}" cy="${marker.y}" r="8"/>` : ""}</svg><span class="map-project-watermark">Illustrative map · not to scale</span></div>
     <div class="state-count-strip"><div class="state-count"><strong>${stats.ongoing}</strong><span>${t("ongoing")} projects</span></div><div class="state-count"><strong>${stats.newProjects}</strong><span>${t("newProjects")}</span></div><div class="state-count"><strong>${stats.ended}</strong><span>${t("ended")}</span></div></div>
-    <div class="state-panel-section"><div class="state-panel-section-heading"><h3>${selected ? `Districts in ${escapeHtml(selected)}` : "Popular districts"}</h3><span>${selected ? `${districts.length} locations` : "Choose a district"}</span></div><div class="district-list">${visibleDistricts.map(district => `<button class="district-chip ${state.mapDistrict === district ? "is-active" : ""}" type="button" data-map-district="${escapeHtml(district)}" ${!selected ? `data-map-state="${escapeHtml(projects.find(p => p.district === district)?.state || "Rajasthan")}"` : ""}>${escapeHtml(district)}${selected ? `<small>${stateProjects(selected).filter(project => project.district === district).length}</small>` : ""}</button>`).join("")}</div></div>
+    <div class="state-panel-section"><div class="state-panel-section-heading"><h3>${selected ? `Districts in ${escapeHtml(selected)}` : "Popular districts"}</h3><span>${selected ? `${districts.length} locations` : "Choose a district"}</span></div><div class="district-list">${visibleDistricts.map(district => `<button class="district-chip ${state.mapDistrict === district ? "is-active" : ""}" type="button" data-map-district="${escapeHtml(district)}" ${!selected ? `data-map-state="${escapeHtml(projects.find(p => p.district === district)?.state || "Rajasthan")}"` : ""}>${escapeHtml(district)}${selected ? `<small>${stateProjects(selected).filter(project => project.district === district).length}</small>` : ""}</button>`).join("")}</div>${selected && districts.length > 18 ? `<button class="text-button" type="button" data-action="toggle-districts" aria-expanded="${state.showAllDistricts}">${state.showAllDistricts ? "Show fewer districts" : "Show all districts"}</button>` : ""}</div>
     <div class="state-panel-section"><div class="state-panel-section-heading"><h3>Latest in view</h3><span>${localProjectList.length ? `${localProjectList.length} shown` : "No sample projects"}</span></div><div class="map-project-list">${localProjectList.length ? localProjectList.map(project => `<button class="map-project-row" type="button" data-open-project="${escapeHtml(project.id)}"><span><strong>${escapeHtml(project.title)}</strong><small>${escapeHtml(project.district)} · ${escapeHtml(statusLabel(project.status))}</small></span><span>${project.progress}%</span></button>`).join("") : `<p class="form-note">No sample projects are listed for this state yet. Choose another state to explore mock records.</p>`}</div></div>
   </aside>`;
 }
@@ -375,7 +374,9 @@ function browseAll() {
   resetFilters();
   setView("feed", "recent");
 }
+const starButtons = () => [...elements.app.querySelectorAll("[data-bookmark]")];
 function toggleBookmark(projectId) {
+  const focusedStar = starButtons().indexOf(document.activeElement);
   if (state.bookmarks.has(projectId)) {
     state.bookmarks.delete(projectId);
     showToast("Removed from starred projects.");
@@ -387,6 +388,12 @@ function toggleBookmark(projectId) {
   elements.savedCount.hidden = state.bookmarks.size === 0;
   elements.savedCount.textContent = String(state.bookmarks.size);
   renderApp();
+  if (focusedStar >= 0) {
+    // Redrawing removed the button: focus the same star, else its neighbour, else the main area.
+    const stars = starButtons();
+    const next = stars.find(button => button.dataset.bookmark === projectId) || stars[Math.min(focusedStar, stars.length - 1)] || document.querySelector("#main-content");
+    next.focus({ preventScroll: true });
+  }
 }
 function recordHistory(projectId) {
   state.history = [projectId, ...state.history.filter(id => id !== projectId)].slice(0, 20);
@@ -426,7 +433,10 @@ function closeModal() {
   elements.modalRoot.innerHTML = "";
   const returnFocus = modalReturnFocus;
   modalReturnFocus = null;
-  if (returnFocus?.isConnected) window.requestAnimationFrame(() => returnFocus.focus());
+  const projectId = returnFocus?.dataset?.openProject;
+  // If the screen was redrawn behind the popup, return to the same project's new button.
+  const target = returnFocus?.isConnected ? returnFocus : projectId && elements.app.querySelector(`[data-open-project="${CSS.escape(projectId)}"]`);
+  if (target) window.requestAnimationFrame(() => target.focus());
 }
 function openAuth(mode = "signin") {
   const signUp = mode === "signup";
@@ -446,7 +456,11 @@ function renderNotifications() {
   localizeDOM(elements.notificationPanel, state.language);
 }
 function openSettings() {
-  showModal(`<span class="modal-eyebrow">PREFERENCES · THIS DEVICE</span><h2 class="modal-title">Settings</h2><p class="modal-intro">A few controls to make this civic dashboard more comfortable to use.</p><div class="settings-choice"><span><strong>Dark theme</strong><small>Switch between the light civic theme and a low-light palette.</small></span><button class="theme-toggle" type="button" role="switch" aria-label="Dark theme" aria-checked="${state.theme === "dark"}" data-action="toggle-theme"></button></div><div class="settings-choice"><span><strong>Nearby project feed</strong><small>Use your device location only when you choose. Coordinates stay in this tab.</small></span><button class="button button-secondary button-small" type="button" data-action="location">${state.locationEnabled ? "Turn off" : "Use location"}</button></div><div class="settings-choice"><span><strong>Feedback</strong><small>Share a suggestion about making public projects easier to understand.</small></span><button class="button button-secondary button-small" type="button" data-action="feedback">Send feedback</button></div><div class="settings-choice"><span><strong>Report a bug</strong><small>Describe a display issue or something that is not working in this demo.</small></span><button class="button button-secondary button-small" type="button" data-action="bug-report">Report issue</button></div><div class="modal-action-row"><span class="theme-preview"><i></i> Civic trust theme</span><button class="button button-primary button-small" type="button" data-modal-close>Done</button></div>`);
+  showModal(`<span class="modal-eyebrow">PREFERENCES · THIS DEVICE</span><h2 class="modal-title">Settings</h2><p class="modal-intro" data-settings>A few controls to make this civic dashboard more comfortable to use.</p><div class="settings-choice"><span><strong>Dark theme</strong><small>Switch between the light civic theme and a low-light palette.</small></span><button class="theme-toggle" type="button" role="switch" aria-label="Dark theme" aria-checked="${state.theme === "dark"}" data-action="toggle-theme"></button></div><div class="settings-choice"><span><strong>Nearby project feed</strong><small>Use your device location only when you choose. Coordinates stay in this tab.</small></span><button class="button button-secondary button-small" type="button" data-action="location">${state.locationEnabled ? "Turn off" : "Use location"}</button></div><div class="settings-choice"><span><strong>Feedback</strong><small>Share a suggestion about making public projects easier to understand.</small></span><button class="button button-secondary button-small" type="button" data-action="feedback">Send feedback</button></div><div class="settings-choice"><span><strong>Report a bug</strong><small>Describe a display issue or something that is not working in this demo.</small></span><button class="button button-secondary button-small" type="button" data-action="bug-report">Report issue</button></div><div class="modal-action-row"><span class="theme-preview"><i></i> Civic trust theme</span><button class="button button-primary button-small" type="button" data-modal-close>Done</button></div>`);
+}
+// Redraws Settings only if it is the popup on screen, so no other popup is replaced.
+function refreshSettings() {
+  if (elements.modalRoot.querySelector("[data-settings]")) openSettings();
 }
 function openFeedback(type) {
   const bug = type === "bug";
@@ -459,7 +473,7 @@ function requestLocation() {
     state.locationCoords = null;
     showToast("Nearby sorting turned off. Showing latest projects across India.");
     renderApp();
-    if (elements.modalRoot.innerHTML) openSettings();
+    refreshSettings();
     return;
   }
   if (!navigator.geolocation) {
@@ -480,7 +494,7 @@ function requestLocation() {
     }).find(item => projects.some(project => project.state === item.name));
     showToast(`Nearby sorting enabled. Closest sample projects are in ${closest?.name || "India"}.`);
     renderApp();
-    if (elements.modalRoot.innerHTML) openSettings();
+    refreshSettings();
   }, error => {
     const message = error.code === 1 ? "Location permission was not granted. Showing latest projects across India." : "Could not get your location. Showing latest projects across India.";
     showToast(message);
@@ -522,6 +536,7 @@ function resetFilters() {
 function mapToState(name) {
   state.mapState = name;
   state.mapDistrict = "";
+  state.showAllDistricts = false;
   state.view = "map";
   closePopovers();
   renderApp();
@@ -585,6 +600,7 @@ document.addEventListener("click", event => {
     if (action === "location") { requestLocation(); return; }
     if (action === "feedback" || action === "bug-report") { closeSettingsAnd(action); return; }
     if (action === "toggle-theme") { state.theme = state.theme === "dark" ? "light" : "dark"; safeWrite(STORAGE.theme, state.theme); applyTheme(); openSettings(); return; }
+    if (action === "toggle-districts") { state.showAllDistricts = !state.showAllDistricts; renderApp(); elements.app.querySelector('[data-action="toggle-districts"]')?.focus(); return; }
     if (action === "clear-map-state") { state.mapState = ""; state.mapDistrict = ""; renderApp(); return; }
     if (action === "mark-notifications-read") { state.readNotifications = new Set(notifications.map(item => item.id)); safeWrite(STORAGE.readNotifications, [...state.readNotifications]); renderNotifications(); showToast("All notifications marked as read."); return; }
   }
@@ -597,8 +613,11 @@ document.addEventListener("keydown", event => {
   }
   const dialog = elements.modalRoot.querySelector(".modal-card");
   if (dialog && event.key === "Tab") trapModalFocus(event, dialog);
-  if (event.key === "Escape") { closeModal(); closePopovers(); }
-  if ((event.key === "Enter" || event.key === " ") && event.target.matches(".state-marker")) {
+  if (event.key === "Escape") {
+    if (dialog) event.preventDefault(); // tells the assistant this key has been used
+    closeModal(); closePopovers();
+  }
+  if ((event.key === "Enter" || event.key === " ") && event.target.matches(".state-marker, .map-point-hit[data-state]")) {
     event.preventDefault(); mapToState(event.target.dataset.state);
   }
 });
@@ -652,12 +671,6 @@ document.addEventListener("submit", event => {
     closeModal();
     showToast(bug ? "Bug report saved in this demo. Nothing was sent." : "Feedback saved in this demo. Nothing was sent.");
   }
-});
-
-// The map overview preview also supports keyboard activation on its SVG markers.
-document.addEventListener("click", event => {
-  const point = event.target.closest(".map-point-hit");
-  if (point?.dataset.state) mapToState(point.dataset.state);
 });
 
 if (!state.language || !translations[state.language]) state.language = "en";

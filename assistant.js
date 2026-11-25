@@ -261,6 +261,8 @@ export function initializeAssistant({ root, getLanguage = () => "en", onProjectO
     if (mode === "chooser" && !root.contains(event.target)) setMode("closed");
   });
   document.addEventListener("keydown", event => {
+    // A project popup sits above the chat and handles the keyboard itself.
+    if (event.defaultPrevented || (event.key === "Tab" && document.querySelector("#modal-root .modal-card"))) return;
     if (mode === "full" && event.key === "Tab") {
       const dialog = root.querySelector(".fp-window-full");
       if (dialog) trapAssistantFocus(event, dialog);

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { projects } from "../data.js";
-import { distanceKm, matchesFilters, selectProjects, countResults, availableSorts, effectiveSort } from "../logic.js";
+import { projects, districtsByState } from "../data.js";
+import { distanceKm, matchesFilters, selectProjects, countResults, availableSorts, effectiveSort, orderDistricts } from "../logic.js";
 
 const noFilters = { department: "", state: "", district: "", startDate: "" };
 const ongoing = projects.filter(project => project.status === "ongoing").map(project => project.id);
@@ -80,5 +80,14 @@ test("every sort option orders the list as named", () => {
     const list = selectProjects(projects, makeState({ ...state, sort }));
     assert.equal(list.length, history.length);
     assert.deepEqual(ids(list), ids([...list].sort(rules[sort])), sort);
+  }
+});
+
+test("B7: every district with a project is within the first 18 of its state", () => {
+  for (const project of projects) {
+    const own = projects.filter(item => item.state === project.state).map(item => item.district);
+    const list = orderDistricts(districtsByState[project.state] ?? [], own);
+    assert.ok(list.indexOf(project.district) < 18, project.district);
+    assert.equal(new Set(list).size, list.length);
   }
 });
