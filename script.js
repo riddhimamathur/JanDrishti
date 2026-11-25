@@ -599,7 +599,7 @@ document.addEventListener("keydown", event => {
   const dialog = elements.modalRoot.querySelector(".modal-card");
   if (dialog && event.key === "Tab") trapModalFocus(event, dialog);
   if (event.key === "Escape") { closeModal(); closePopovers(); }
-  if ((event.key === "Enter" || event.key === " ") && event.target.matches(".state-marker")) {
+  if ((event.key === "Enter" || event.key === " ") && event.target.matches(".state-marker, .map-point-hit[data-state]")) {
     event.preventDefault(); mapToState(event.target.dataset.state);
   }
 });
@@ -653,12 +653,6 @@ document.addEventListener("submit", event => {
     closeModal();
     showToast(bug ? "Bug report saved in this demo. Nothing was sent." : "Feedback saved in this demo. Nothing was sent.");
   }
-});
-
-// The map overview preview also supports keyboard activation on its SVG markers.
-document.addEventListener("click", event => {
-  const point = event.target.closest(".map-point-hit");
-  if (point?.dataset.state) mapToState(point.dataset.state);
 });
 
 if (!state.language || !translations[state.language]) state.language = "en";
