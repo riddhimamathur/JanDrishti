@@ -244,8 +244,7 @@ function renderMiniMap() {
 }
 function renderGlanceCard() {
   const stats = statsFor(projects);
-  const place = state.locationEnabled && state.locationCoords ? "Near your location" : t("allIndia");
-  return `<section class="rail-card glance-card"><div class="rail-card-heading"><h3>Project snapshot</h3><span>Sample data</span></div><div class="glance-location">${locationIcon()}<span>${place}</span></div><div class="metrics-list">
+  return `<section class="rail-card glance-card"><div class="rail-card-heading"><h3>Project snapshot</h3><span>Sample data</span></div><div class="glance-location">${locationIcon()}<span>${t("allIndia")}</span></div><div class="metrics-list">
     <div class="metric-row"><span class="metric-label"><i class="metric-dot"></i>${t("ongoing")} projects</span><strong>${stats.ongoing}</strong></div>
     <div class="metric-row"><span class="metric-label"><i class="metric-dot new"></i>${t("newProjects")}</span><strong>${stats.newProjects}</strong></div>
     <div class="metric-row"><span class="metric-label"><i class="metric-dot ended"></i>${t("ended")}</span><strong>${stats.ended}</strong></div>
