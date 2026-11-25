@@ -34,14 +34,22 @@ const PLACE_ALIASES = {
   "bikaner-solar-health": ["बीकानेर", "બિકાનેર", "बीकानेर", "ବିକାନେର", "বিকানের", "బికానెర్", "ಬಿಕಾನೇರ್"],
   "ahmedabad-water-reuse": ["अहमदाबाद", "અમદાવાદ", "अहमदाबाद", "ଅହମଦାବାଦ", "আহমেদাবাদ", "అహ్మదాబాద్", "ಅಹಮದಾಬಾದ್"],
   "pune-elevated-corridor": ["पुणे", "પુણે", "पुणे", "ପୁଣେ", "পুনে", "పుణె", "ಪುಣೆ"],
-  "bengaluru-pipeline": ["ಬೆಂಗಳೂರು", "বেঙ্গালুরু", "బెంగళూరు", "बेंगळुरू", "ବେଙ୍ଗାଲୁରୁ"],
-  "kolkata-school-upgrade": ["कोलकाता", "কলকাতা", "కోల్‌కతా", "ಕೋಲ್ಕತಾ", "କୋଲକାତା"],
+  "bengaluru-pipeline": ["bangalore", "बेंगलुरु", "બેંગલુરુ", "ಬೆಂಗಳೂರು", "বেঙ্গালুরু", "బెంగళూరు", "बेंगळुरू", "ବେଙ୍ଗାଲୁରୁ"],
+  "kolkata-school-upgrade": ["कोलकाता", "કોલકાતા", "কলকাতা", "కోల్‌కతా", "ಕೋಲ್ಕತಾ", "କୋଲକାତା"],
   "hyderabad-bus-priority": ["हैदराबाद", "હૈદરાબાદ", "ഹൈദരാബാദ്", "ହାଇଦ୍ରାବାଦ", "హైదరాబాద్", "ಹೈದರಾಬಾದ್", "হায়দরাবাদ"]
 };
+const STATE_ALIASES = {
+  "Rajasthan": ["राजस्थान", "રાજસ્થાન", "ରାଜସ୍ଥାନ", "রাজস্থান", "రాజస్థాన్", "ರಾಜಸ್ಥಾನ"],
+  "Gujarat": ["गुजरात", "ગુજરાત", "ଗୁଜରାଟ", "গুজরাট", "గుజరాత్", "ಗುಜರಾತ್"],
+  "Maharashtra": ["महाराष्ट्र", "મહારાષ્ટ્ર", "ମହାରାଷ୍ଟ୍ର", "মহারাষ্ট্র", "మహారాష్ట్ర", "ಮಹಾರಾಷ್ಟ್ರ"],
+  "Karnataka": ["कर्नाटक", "કર્ણાટક", "କର୍ଣ୍ଣାଟକ", "কর্ণাটক", "కర్ణాటక", "ಕರ್ನಾಟಕ"],
+  "West Bengal": ["पश्चिम बंगाल", "પશ્ચિમ બંગાળ", "ପଶ୍ଚିମବଙ୍ଗ", "পশ্চিমবঙ্গ", "పశ్చిమ బెంగాల్", "ಪಶ್ಚಿಮ ಬಂಗಾಳ"],
+  "Telangana": ["तेलंगाना", "तेलंगणा", "તેલંગાણા", "ତେଲେଙ୍ଗାନା", "তেলেঙ্গানা", "తెలంగాణ", "ತೆಲಂಗಾಣ"]
+};
 const STATUS_TERMS = {
-  ongoing: ["ongoing", "in progress", "still working", "जारी", "चल रहा", "ચાલુ", "સુરુ", "सुरू", "चालू", "ଚାଲୁ", "চলছে", "కొనసాగుతోంది", "ನಡೆಯುತ್ತಿದೆ"],
+  ongoing: ["ongoing", "in progress", "still working", "जारी", "चल रहा", "चल रही", "चल रहे", "ચાલુ", "સુરુ", "सुरू", "चालू", "ଚାଲୁ", "চলছে", "కొనసాగుతోంది", "ನಡೆಯುತ್ತಿದೆ"],
   new: ["new", "नया", "नई", "નવો", "નવા", "नवीन", "नवीन", "ନୂଆ", "ନୂତନ", "নতুন", "కొత్త", "ಹೊಸ"],
-  ended: ["ended", "finished", "completed", "complete", "recently ended", "সম্পন্ন", "শেষ হয়েছে", "শেষ", "పూర్తయింది", "ముగిసిన", "ಪೂರ್ಣ", "ಮುಗಿದ", "પૂર્ણ", "ପୂର୍ଣ୍ଣ", "ସମାପ୍ତ", "पूरी", "पूर्ण", "પૂર્ણ", "पूर्ण", "पूर्ण"]
+  ended: ["ended", "finished", "completed", "complete", "recently ended", "সম্পন্ন", "শেষ হয়েছে", "শেষ", "పూర్తయింది", "పూర్తయిన", "પૂરા", "પૂરો", "પૂરી", "પૂરું", "ସରିଛି", "ముగిసిన", "ಪೂರ್ಣ", "ಮುಗಿದ", "પૂર્ણ", "ପୂର୍ଣ୍ଣ", "ସମାପ୍ତ", "पूरी", "पूर्ण", "પૂર્ણ", "पूर्ण", "पूर्ण"]
 };
 const GENERIC_TERMS = new Set([
   "project", "projects", "work", "update", "updates", "status", "progress", "tell", "show", "find", "about", "what", "when", "where", "which", "how", "please", "latest", "all", "the", "a", "an", "in", "on", "for", "of", "is", "are", "was", "were", "my", "me", "to", "and", "or", "can", "you", "give", "details", "information", "budget", "department", "timeline", "date", "finished", "ongoing", "new", "recently", "completed", "क्या", "कौन", "कब", "कहाँ", "कैसे", "बारे", "बताएं", "बताइए", "परियोजना", "परियोजनाएँ", "काम", "क्या", "છે", "શું", "ક્યારે", "પ્રોજેક્ટ", "કામ", "काय", "कधी", "प्रकल्प", "କଣ", "କେବେ", "ପ୍ରକଳ୍ପ", "କାମ", "কি", "কবে", "প্রকল্প", "কাজ", "ఏమి", "ఎప్పుడు", "ప్రాజెక్ట్", "ಕೆಲಸ", "ಯೋಜನೆ", "ಯೋಜನೆಗಳು", "ಏನು", "ಯಾವಾಗ"
@@ -73,11 +81,24 @@ function safeWriteMessages(messages) {
 }
 function newestFirst(a, b) { return b.updatedAt.localeCompare(a.updatedAt); }
 
+// Projects the question points at. A district, city, title or other spelling is more specific than a state.
+function namedProjects(query, projects) {
+  const mentions = names => names.some(name => hasTerm(query, name));
+  const specific = projects.filter(project => mentions([project.district, project.location.split(",")[0], project.title, ...(PLACE_ALIASES[project.id] || [])]));
+  return specific.length ? specific : projects.filter(project => mentions([project.state, ...(STATE_ALIASES[project.state] || [])]));
+}
+
 export function findProjectsForQuestion(question, language = "en", sourceProjects = defaultProjects) {
   const query = normalize(question);
   if (!query) return [];
   const status = Object.entries(STATUS_TERMS).find(([, terms]) => terms.some(term => hasTerm(query, term)))?.[0];
-  const candidates = status ? sourceProjects.filter(project => project.status === status) : sourceProjects;
+  const named = namedProjects(query, sourceProjects);
+  let candidates = named.length ? named : sourceProjects;
+  if (status) {
+    // A status word narrows the answer, but never removes every place the user named.
+    const withStatus = candidates.filter(project => project.status === status);
+    if (withStatus.length || !named.length) candidates = withStatus;
+  }
   const words = query.split(" ").filter(word => word.length > 2 && !GENERIC_TERMS.has(word));
   const ranked = candidates.map(project => {
     let score = 0;
@@ -85,12 +106,12 @@ export function findProjectsForQuestion(question, language = "en", sourceProject
     for (const field of searchable) {
       if (field.length > 2 && query.includes(field)) score += field === normalize(project.district) || field === normalize(project.state) ? 12 : 7;
     }
-    if ((PLACE_ALIASES[project.id] || []).some(alias => query.includes(normalize(alias)))) score += 14;
+    if ((PLACE_ALIASES[project.id] || []).some(alias => hasTerm(query, alias))) score += 14;
     const fieldWords = new Set(searchable.join(" ").split(" "));
     score += words.filter(word => fieldWords.has(word)).length * 1.5;
     if (status && project.status === status) score += 3;
     return { project, score };
-  }).filter(item => item.score > 0).sort((a, b) => b.score - a.score || newestFirst(a.project, b.project));
+  }).filter(item => named.length || item.score > 0).sort((a, b) => b.score - a.score || newestFirst(a.project, b.project));
 
   if (ranked.length) return ranked.slice(0, 3).map(item => item.project);
   if (status) return candidates.slice().sort(newestFirst).slice(0, 3);
