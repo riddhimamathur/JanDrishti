@@ -15,3 +15,8 @@ test("B11 and B18: all updates come newest first, each with its own text", () =>
   assert.deepEqual(updatesNewestFirst(project, "old, translated"), [{ date: "2026-03-01", text: "new" }, { date: "2026-01-01", text: "old, translated" }]);
   for (const item of projects) assert.equal(updatesNewestFirst(item).length, item.updates.length);
 });
+test("B24: notifications carry real dates and no wording that goes stale", () => {
+  for (const item of notifications) assert.ok(!Number.isNaN(Date.parse(item.at)), item.id);
+  const source = ["data.js", "script.js"].map(file => readFileSync(new URL(`../${file}`, import.meta.url), "utf8")).join("");
+  assert.doesNotMatch(source, /when: "(Today|Yesterday)|New this month/);
+});

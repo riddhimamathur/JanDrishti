@@ -106,7 +106,7 @@ function formatDate(value, options = { day: "numeric", month: "short", year: "nu
 }
 function formatShortDate(value) { return formatDate(value, { day: "numeric", month: "short" }); }
 function statusLabel(status) {
-  if (status === "new") return state.language === "en" ? "New this month" : `${t("newProjects")}`;
+  if (status === "new") return "New";
   if (status === "ended") return t("ended");
   return state.language === "en" ? "In progress" : t("ongoing");
 }
@@ -455,7 +455,7 @@ function renderProfilePanel() {
 function renderNotifications() {
   const unread = notifications.some(item => item.unread && !state.readNotifications.has(item.id));
   document.querySelector(".notification-dot").hidden = !unread;
-  elements.notificationPanel.innerHTML = `<div class="notification-head"><h3>${t("notifications")}</h3><button class="text-button" type="button" data-action="mark-notifications-read">Mark read</button></div>${notifications.map(item => `<button class="notification-item" type="button" data-open-project="${escapeHtml(item.projectId)}" data-notification="${escapeHtml(item.id)}"><span class="notification-mark"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5m0 14h17M8 15l4-4 3 2 5-6"/></svg></span><span class="notification-copy"><strong>${escapeHtml(item.label)}${item.unread && !state.readNotifications.has(item.id) ? `<i class="unread-dot"></i>` : ""}</strong><p>${escapeHtml(item.text)}</p><small>${escapeHtml(item.when)}</small></span></button>`).join("")}`;
+  elements.notificationPanel.innerHTML = `<div class="notification-head"><h3>${t("notifications")}</h3><button class="text-button" type="button" data-action="mark-notifications-read">Mark read</button></div>${notifications.map(item => `<button class="notification-item" type="button" data-open-project="${escapeHtml(item.projectId)}" data-notification="${escapeHtml(item.id)}"><span class="notification-mark"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5m0 14h17M8 15l4-4 3 2 5-6"/></svg></span><span class="notification-copy"><strong>${escapeHtml(item.label)}${item.unread && !state.readNotifications.has(item.id) ? `<i class="unread-dot"></i>` : ""}</strong><p>${escapeHtml(item.text)}</p><small><time datetime="${escapeHtml(item.at)}">${escapeHtml(new Intl.DateTimeFormat(locale(), { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(item.at)))}</time></small></span></button>`).join("")}`;
   localizeDOM(elements.notificationPanel, state.language);
 }
 function openSettings() {
