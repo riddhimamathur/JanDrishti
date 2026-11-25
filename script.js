@@ -598,7 +598,10 @@ document.addEventListener("keydown", event => {
   }
   const dialog = elements.modalRoot.querySelector(".modal-card");
   if (dialog && event.key === "Tab") trapModalFocus(event, dialog);
-  if (event.key === "Escape") { closeModal(); closePopovers(); }
+  if (event.key === "Escape") {
+    if (dialog) event.preventDefault(); // tells the assistant this key has been used
+    closeModal(); closePopovers();
+  }
   if ((event.key === "Enter" || event.key === " ") && event.target.matches(".state-marker, .map-point-hit[data-state]")) {
     event.preventDefault(); mapToState(event.target.dataset.state);
   }
