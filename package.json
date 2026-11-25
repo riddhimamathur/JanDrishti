@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "test": "node --test",
     "build": "rm -rf public && mkdir -p public/assets && cp index.html script.js logic.js assistant.js data.js i18n.js manus-routes.json public/ && cp -R assets/. public/assets/ && tailwindcss -i ./styles.input.css -o ./public/styles.css --minify"
   },
   "devDependencies": {
