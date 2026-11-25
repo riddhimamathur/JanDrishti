@@ -14,6 +14,15 @@
     <script type="module" src="./script.js"></script>
   </head>
   <body>
+    <script>
+      // Set the theme before anything is painted, so a dark page never flashes light.
+      (function () {
+        var theme;
+        try { theme = JSON.parse(localStorage.getItem("jandrishti.theme")); } catch (error) { /* storage unavailable */ }
+        if (theme !== "dark" && theme !== "light") theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        document.body.dataset.theme = theme;
+      })();
+    </script>
     <a class="skip-link" href="#main-content">Skip to content</a>
 
     <header class="topbar" aria-label="Main navigation">

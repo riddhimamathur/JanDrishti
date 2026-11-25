@@ -31,7 +31,7 @@ const state = {
   filtersFromMap: false, // set by a map district click; such filters are dropped on Home
   sort: "auto",
   language: savedLanguage(),
-  theme: safeRead(STORAGE.theme, "light") === "dark" ? "dark" : "light",
+  theme: savedTheme(),
   bookmarks: new Set(cleanIdList(safeRead(STORAGE.bookmarks, []), projects.map(project => project.id))),
   history: cleanIdList(safeRead(STORAGE.history, []), projects.map(project => project.id)),
   user: cleanUser(safeRead(STORAGE.user, null)),
@@ -75,6 +75,11 @@ function safeRead(key, fallback) {
 }
 function safeWrite(key, value) {
   try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* Private browsing may disable storage. */ }
+}
+function savedTheme() {
+  const value = safeRead(STORAGE.theme, null);
+  if (value === "dark" || value === "light") return value;
+  return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light"; // same rule as the script in index.html
 }
 function savedLanguage() {
   const value = safeRead(STORAGE.language, "en");
