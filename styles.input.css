@@ -1041,3 +1041,5 @@ body.fp-fullscreen-active { overflow: hidden; }
 @media (min-width: 1181px) { .topbar { grid-template-columns: 270px minmax(340px, 1fr) auto; } }
 @media (max-width: 1180px) { .brand-copy small { display: none; } }
 @media (max-width: 380px) { .image-caption { max-width: calc(100% - 10px); } }
+body.modal-open { overflow: hidden; }
+@media (max-width: 740px) { .mobile-nav button { width: auto; flex: 1; min-width: 0; min-height: 44px; } }

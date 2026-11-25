@@ -87,12 +87,14 @@
     </aside>
 
     <main class="main-shell" id="main-content" tabindex="-1">
-      <div id="app-view" aria-live="polite"></div>
+      <div id="app-view"></div>
+      <p class="sr-only" id="result-status" role="status"></p>
     </main>
 
     <nav class="mobile-nav" aria-label="Mobile navigation">
       <button type="button" data-view="feed" class="is-active"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v9a2 2 0 0 1-2 2h-4v-7H9v7H5a2 2 0 0 1-2-2v-9Z"/></svg><span>Home</span></button>
       <button type="button" data-view="map"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3V6Z"/><path d="M9 3v15m6-12v15"/></svg><span>Map</span></button>
+      <button type="button" data-view="updates"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5m0 14h17M8 15l4-4 3 2 5-6"/></svg><span>Updates</span></button>
       <button type="button" data-view="saved"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.8 5.8 6.4.9-4.6 4.5 1.1 6.4-5.7-3-5.7 3 1.1-6.4-4.6-4.5 6.4-.9L12 3Z"/></svg><span>Saved</span></button>
       <button type="button" data-view="history"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 12a8.5 8.5 0 1 0 2.4-5.9L3.5 8.5"/><path d="M3.5 4.5v4h4M12 7v5l3.3 2"/></svg><span>History</span></button>
       <button type="button" data-action="settings"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.5"/><path d="M19.4 15.2 21 16.4l-1.5 2.5-1.8-.6a8 8 0 0 1-1.5.8l-.4 1.9h-2.9l-.4-1.9a8 8 0 0 1-1.5-.8l-1.8.6-1.5-2.5 1.5-1.2a7 7 0 0 1 0-2.3L5.7 11.7l1.5-2.5 1.8.6a8 8 0 0 1 1.5-.8l.4-1.9h2.9l.4 1.9a8 8 0 0 1 1.5.8l1.8-.6 1.5 2.5-1.6 1.2a7 7 0 0 1 0 2.3Z" transform="translate(-1 -1)"/></svg><span>Settings</span></button>
