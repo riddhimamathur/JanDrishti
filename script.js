@@ -303,7 +303,7 @@ function renderMapDrawing() {
   return `<svg class="india-map-svg" viewBox="55 20 450 520" role="img" aria-label="Illustrative, interactive map of India; select a marked state">
     <path class="india-shape" d="M243 27 274 40 294 56 322 61 333 78 365 95 383 120 407 135 422 164 444 178 451 209 435 231 450 257 432 283 416 302 399 330 380 347 369 379 350 411 335 443 316 474 293 505 276 481 256 460 239 431 215 418 201 393 180 375 158 350 138 326 119 301 105 274 103 247 117 223 134 204 138 177 159 162 174 143 195 131 210 108 232 87 238 61Z"/>
     <path class="state-outline" d="M179 149 211 125 239 128 242 170 222 198 191 192 170 172Z"/><path class="state-outline" d="M132 211 166 193 201 203 211 240 190 266 151 259 119 240Z"/><path class="state-outline" d="M207 237 245 212 285 222 302 259 278 291 237 290 207 266Z"/><path class="state-outline" d="M217 301 250 285 276 308 271 358 249 386 225 363 215 332Z"/><path class="state-outline" d="M278 267 313 245 340 259 334 298 303 322 275 304Z"/><path class="state-outline" d="M288 171 324 150 353 166 365 199 339 224 306 217Z"/><path class="state-outline" d="M367 232 393 223 418 237 405 270 378 274 358 254Z"/>
-    <path d="M434 234q27-14 47 1m-46 9q32-4 53 12m-65-10q-14 19-29 23" fill="none" stroke="#ced9e6" stroke-width="5" stroke-linecap="round"/>
+    <path d="M434 234q27-14 47 1m-46 9q32-4 53 12m-65-10q-14 19-29 23" class="map-river" stroke-width="5" stroke-linecap="round"/>
     ${renderStateMarkers()}
     <circle class="map-point" cx="93" cy="328" r="3"/><circle class="map-point" cx="464" cy="317" r="3"/>
   </svg>`;
