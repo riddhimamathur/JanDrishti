@@ -27,6 +27,7 @@ const state = {
   mapDistrict: "",
   search: "",
   filters: { department: "", state: "", district: "", startDate: "" },
+  filtersFromMap: false, // set by a map district click; such filters are dropped on Home
   sort: "auto",
   language: safeRead(STORAGE.language, "en"),
   theme: safeRead(STORAGE.theme, "light"),
@@ -346,6 +347,7 @@ function renderApp() {
       if (stateProjects(state.mapState).some(project => project.district === district)) {
         state.filters.state = state.mapState;
         state.filters.district = district;
+        state.filtersFromMap = true;
         state.view = "feed";
         updateFilterOptions();
         renderApp();
@@ -356,6 +358,13 @@ function renderApp() {
 function setView(view, sort = "auto") {
   state.view = view;
   state.sort = sort;
+  if (view === "feed" && state.filtersFromMap) {
+    state.filtersFromMap = false;
+    state.mapDistrict = "";
+    state.filters.state = "";
+    state.filters.district = "";
+    updateFilterOptions();
+  }
   state.search = "";
   elements.search.value = "";
   closePopovers();
@@ -497,11 +506,13 @@ function togglePopover(panel, trigger) {
   }
 }
 function clearFilter(key) {
+  state.filtersFromMap = false;
   state.filters[key] = "";
   updateFilterOptions();
   renderApp();
 }
 function resetFilters() {
+  state.filtersFromMap = false;
   state.filters = { department: "", state: "", district: "", startDate: "" };
   state.search = "";
   elements.search.value = "";
@@ -566,7 +577,7 @@ document.addEventListener("click", event => {
     if (action === "close-filters") { elements.filterPanel.hidden = true; elements.filterTrigger.setAttribute("aria-expanded", "false"); return; }
     if (action === "reset-filters") { resetFilters(); closePopovers(); return; }
     if (action === "browse-all") { browseAll(); return; }
-    if (action === "apply-filters") { state.filters = { department: elements.department.value, state: elements.stateFilter.value, district: elements.district.value, startDate: elements.startDate.value }; if (state.view === "map") state.view = "feed"; closePopovers(); renderApp(); showToast("Project filters applied."); return; }
+    if (action === "apply-filters") { state.filtersFromMap = false; state.filters = { department: elements.department.value, state: elements.stateFilter.value, district: elements.district.value, startDate: elements.startDate.value }; if (state.view === "map") state.view = "feed"; closePopovers(); renderApp(); showToast("Project filters applied."); return; }
     if (action === "settings") { openSettings(); return; }
     if (action === "auth") { closePopovers(); openAuth("signin"); return; }
     if (action === "signup") { closePopovers(); openAuth("signup"); return; }
@@ -606,11 +617,13 @@ document.addEventListener("change", event => {
     safeWrite(STORAGE.language, state.language);
     applyLanguage();
   } else if (event.target === elements.stateFilter) {
+    state.filtersFromMap = false;
     state.filters.state = elements.stateFilter.value;
     state.filters.district = "";
     updateFilterOptions();
     renderApp();
   } else if ([elements.department, elements.district, elements.startDate].includes(event.target)) {
+    state.filtersFromMap = false;
     state.filters.department = elements.department.value;
     state.filters.district = elements.district.value;
     state.filters.startDate = elements.startDate.value;
