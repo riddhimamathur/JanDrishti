@@ -374,7 +374,9 @@ function browseAll() {
   resetFilters();
   setView("feed", "recent");
 }
+const starButtons = () => [...elements.app.querySelectorAll("[data-bookmark]")];
 function toggleBookmark(projectId) {
+  const focusedStar = starButtons().indexOf(document.activeElement);
   if (state.bookmarks.has(projectId)) {
     state.bookmarks.delete(projectId);
     showToast("Removed from starred projects.");
@@ -386,6 +388,12 @@ function toggleBookmark(projectId) {
   elements.savedCount.hidden = state.bookmarks.size === 0;
   elements.savedCount.textContent = String(state.bookmarks.size);
   renderApp();
+  if (focusedStar >= 0) {
+    // Redrawing removed the button: focus the same star, else its neighbour, else the main area.
+    const stars = starButtons();
+    const next = stars.find(button => button.dataset.bookmark === projectId) || stars[Math.min(focusedStar, stars.length - 1)] || document.querySelector("#main-content");
+    next.focus({ preventScroll: true });
+  }
 }
 function recordHistory(projectId) {
   state.history = [projectId, ...state.history.filter(id => id !== projectId)].slice(0, 20);
@@ -425,7 +433,10 @@ function closeModal() {
   elements.modalRoot.innerHTML = "";
   const returnFocus = modalReturnFocus;
   modalReturnFocus = null;
-  if (returnFocus?.isConnected) window.requestAnimationFrame(() => returnFocus.focus());
+  const projectId = returnFocus?.dataset?.openProject;
+  // If the screen was redrawn behind the popup, return to the same project's new button.
+  const target = returnFocus?.isConnected ? returnFocus : projectId && elements.app.querySelector(`[data-open-project="${CSS.escape(projectId)}"]`);
+  if (target) window.requestAnimationFrame(() => target.focus());
 }
 function openAuth(mode = "signin") {
   const signUp = mode === "signup";
