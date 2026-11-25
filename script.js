@@ -1,7 +1,7 @@
 import { projects, states, districtsByState, translations, notifications } from "./data.js";
 import { initializeAssistant } from "./assistant.js";
 import { localizeDOM, localizedProjectContent } from "./i18n.js";
-import { sortNewest, distanceKm, matchesFilters, selectProjects, isSuggestedHome } from "./logic.js";
+import { sortNewest, distanceKm, selectProjects, countResults, isSuggestedHome } from "./logic.js";
 
 const STORAGE = {
   bookmarks: "jandrishti.bookmarks",
@@ -162,13 +162,12 @@ function updateActiveNav() {
 }
 function currentProjects() { return selectProjects(projects, state); }
 function distanceFromLocation(project) { return distanceKm(state.locationCoords, project); }
-function filteredProjectsWithoutView() { return projects.filter(project => matchesFilters(project, state.search, state.filters)); }
 function filterCount() { return Object.values(state.filters).filter(Boolean).length; }
 function updateFilterBadge() {
   const count = filterCount();
   elements.filterCount.hidden = count === 0;
   elements.filterCount.textContent = String(count);
-  elements.filterResultCount.textContent = String(filteredProjectsWithoutView().length);
+  elements.filterResultCount.textContent = String(countResults(projects, state));
 }
 function showToast(message) {
   const toast = document.createElement("div");
@@ -567,7 +566,7 @@ document.addEventListener("click", event => {
     if (action === "close-filters") { elements.filterPanel.hidden = true; elements.filterTrigger.setAttribute("aria-expanded", "false"); return; }
     if (action === "reset-filters") { resetFilters(); closePopovers(); return; }
     if (action === "browse-all") { browseAll(); return; }
-    if (action === "apply-filters") { state.filters = { department: elements.department.value, state: elements.stateFilter.value, district: elements.district.value, startDate: elements.startDate.value }; closePopovers(); renderApp(); showToast("Project filters applied."); return; }
+    if (action === "apply-filters") { state.filters = { department: elements.department.value, state: elements.stateFilter.value, district: elements.district.value, startDate: elements.startDate.value }; if (state.view === "map") state.view = "feed"; closePopovers(); renderApp(); showToast("Project filters applied."); return; }
     if (action === "settings") { openSettings(); return; }
     if (action === "auth") { closePopovers(); openAuth("signin"); return; }
     if (action === "signup") { closePopovers(); openAuth("signup"); return; }

@@ -28,6 +28,11 @@ export function isSuggestedHome(state) {
   return state.view === "feed" && state.sort === "suggested" && !hasLocation(state) && !state.search.trim() && !Object.values(state.filters).some(Boolean);
 }
 
+// How many cards "Show projects" will reveal. The map has no list, so it leads to the feed.
+export function countResults(projects, state) {
+  return selectProjects(projects, state.view === "map" ? { ...state, view: "feed" } : state).length;
+}
+
 // The projects shown in the current view, in display order.
 export function selectProjects(projects, state) {
   let list = projects.filter(project => matchesFilters(project, state.search, state.filters));

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { projects } from "../data.js";
-import { distanceKm, matchesFilters, selectProjects } from "../logic.js";
+import { distanceKm, matchesFilters, selectProjects, countResults } from "../logic.js";
 
 const noFilters = { department: "", state: "", district: "", startDate: "" };
 const ongoing = projects.filter(project => project.status === "ongoing").map(project => project.id);
@@ -43,11 +43,13 @@ test("filters and a chosen sort look at every project", () => {
 test("B1: search covers every project", () => {
   assert.deepEqual(ids(selectProjects(projects, makeState({ search: "Bikaner" }))), ["bikaner-solar-health"]);
 });
-test("B2: filter count equals the number of cards", { todo: "fixed in P1.2" }, () => {
-  for (const state of new Set(projects.map(project => project.state))) {
-    const filters = { ...noFilters, state };
-    const counted = projects.filter(project => matchesFilters(project, "", filters)).length;
-    assert.equal(selectProjects(projects, makeState({ filters })).length, counted, state);
+test("B2: the filter count equals the number of cards in every view", () => {
+  for (const view of ["feed", "updates", "saved", "history", "map"]) {
+    for (const state of new Set(projects.map(project => project.state))) {
+      const current = makeState({ view, filters: { ...noFilters, state }, bookmarks: new Set(["raja-park-road"]), history: ["pune-elevated-corridor"] });
+      const listed = selectProjects(projects, view === "map" ? { ...current, view: "feed" } : current);
+      assert.equal(countResults(projects, current), listed.length, `${view} ${state}`);
+    }
   }
 });
 test("B3: 'recently updated' lists every project, newest first", { todo: "fixed in P1.3" }, () => {
