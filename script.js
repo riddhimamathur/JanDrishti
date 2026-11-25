@@ -1,7 +1,7 @@
 import { projects, states, districtsByState, translations, notifications } from "./data.js";
 import { initializeAssistant } from "./assistant.js";
 import { localizeDOM, localizedProjectContent } from "./i18n.js";
-import { sortNewest, distanceKm, selectProjects, countResults, isSuggestedHome, availableSorts, effectiveSort, orderDistricts, cleanIdList, cleanUser, updatesNewestFirst, nearestProject } from "./logic.js";
+import { sortNewest, distanceKm, selectProjects, countResults, isSuggestedHome, availableSorts, effectiveSort, orderDistricts, cleanIdList, cleanUser, updatesNewestFirst, nearestProject, routeFor, parseRoute } from "./logic.js";
 
 const STORAGE = {
   bookmarks: "jandrishti.bookmarks",
@@ -64,6 +64,7 @@ const elements = {
   toastRegion: document.querySelector("#toast-region")
 };
 let modalReturnFocus = null;
+let routerReady = false; // stays false until the address the page opened with has been read
 
 function safeRead(key, fallback) {
   try {
@@ -338,7 +339,25 @@ function renderMap() {
     <section class="rail-card all-states-section"><div class="state-panel-section-heading"><h3>Browse any state or union territory</h3><span>${states.length} locations · mock data may be empty</span></div><div class="district-list all-state-choices">${states.map(item => `<button class="district-chip ${state.mapState === item.name ? "is-active" : ""}" type="button" data-state="${escapeHtml(item.name)}">${escapeHtml(item.name)}<small>${stateProjects(item.name).length}</small></button>`).join("")}</div></section>
   </div>`;
 }
+// Keeps the address in step with the screen. While a project popup is open the address names the project.
+function syncUrl() {
+  if (!routerReady || location.hash.startsWith("#/project/")) return;
+  const target = routeFor(state);
+  if (location.hash !== target && !(location.hash === "" && target === "#/")) history.pushState({ inApp: true }, "", target);
+}
+// Shows what the address names: used on first load and for the Back and Forward buttons.
+function applyRoute() {
+  const route = parseRoute(location.hash, projects.map(project => project.id), states.map(item => item.name));
+  if (!route) return;
+  if (route.projectId) { closePopovers(); openProject(route.projectId); return; }
+  closeModal({ fromRoute: true });
+  if (route.view !== state.view || (route.view === "map" && route.mapState !== state.mapState)) {
+    if (route.view === "map") { state.mapState = route.mapState; state.mapDistrict = ""; state.showAllDistricts = false; }
+    setView(route.view);
+  }
+}
 function renderApp() {
+  syncUrl();
   updateFilterBadge();
   updateActiveNav();
   if (state.view === "map") elements.app.innerHTML = renderMap();
@@ -412,6 +431,8 @@ function openProject(projectId) {
   const project = projectById(projectId);
   if (!project) return;
   recordHistory(project.id);
+  const address = `#/project/${project.id}`;
+  if (location.hash !== address) history[location.hash.startsWith("#/project/") ? "replaceState" : "pushState"]({ inApp: true }, "", address);
   const saved = state.bookmarks.has(project.id);
   const projectCopy = localizedProjectContent(project, state.language);
   const updateRows = updatesNewestFirst(project, projectCopy.latestUpdate).map(update => `<div class="update-row"><time>${formatDate(update.date)}</time><p>${escapeHtml(update.text)}</p></div>`).join("");
@@ -436,8 +457,13 @@ function showModal(content, wide = false) {
   const firstFocusable = elements.modalRoot.querySelector("input, select, textarea, button:not(.modal-close)");
   window.setTimeout(() => firstFocusable?.focus(), 20);
 }
-function closeModal() {
+function closeModal({ fromRoute = false } = {}) {
   if (!elements.modalRoot.querySelector(".modal-card")) return;
+  if (!fromRoute && location.hash.startsWith("#/project/")) {
+    // Step back to where the popup was opened from. A shared link has nowhere to go back to.
+    if (history.state?.inApp) history.back();
+    else history.replaceState(null, "", routeFor(state));
+  }
   elements.modalRoot.innerHTML = "";
   const returnFocus = modalReturnFocus;
   modalReturnFocus = null;
@@ -590,7 +616,7 @@ document.addEventListener("click", event => {
 
   if (actionButton) {
     const action = actionButton.dataset.action;
-    if (action === "home") { setView("feed"); return; }
+    if (action === "home") { event.preventDefault(); setView("feed"); return; }
     if (action === "close-filters") { elements.filterPanel.hidden = true; elements.filterTrigger.setAttribute("aria-expanded", "false"); return; }
     if (action === "reset-filters") { resetFilters(); closePopovers(); return; }
     if (action === "browse-all") { browseAll(); return; }
@@ -678,3 +704,7 @@ document.addEventListener("submit", event => {
 if (!state.language || !translations[state.language]) state.language = "en";
 initializeAssistant({ root: document.querySelector("#assistant-root"), getLanguage: () => state.language, onProjectOpen: openProject, sourceProjects: projects });
 applyLanguage();
+window.addEventListener("popstate", applyRoute);
+applyRoute();
+routerReady = true;
+syncUrl();
