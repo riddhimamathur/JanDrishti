@@ -117,6 +117,9 @@ Tests use Node's built-in test runner and cover the feed logic, chat matching, t
 3. Run `pnpm test` and `pnpm run build`.
 4. Open a pull request. Please do not force push.
 
+contributers :- Riddhima Mathut, Vanshika Mittal, Kashish Goyal
+
+
 See the [developer guide](DEVELOPMENT.md) for details.
 
 ## License and credits
